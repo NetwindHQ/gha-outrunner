@@ -20,7 +20,15 @@ var cfg struct {
 	Name       string
 	Token      string
 	MaxRunners int
-	Image      string
+
+	// Docker-specific
+	Image string
+
+	// Libvirt-specific
+	ConfigFile string
+
+	// Provisioner selection
+	Provisioner string
 }
 
 var rootCmd = &cobra.Command{
@@ -42,7 +50,13 @@ func init() {
 	f.StringVar(&cfg.Name, "name", "outrunner", "Scale set name (used as runs-on label)")
 	f.StringVar(&cfg.Token, "token", "", "GitHub PAT (fine-grained, Administration read/write)")
 	f.IntVar(&cfg.MaxRunners, "max-runners", 2, "Maximum concurrent runners")
-	f.StringVar(&cfg.Image, "image", "ghcr.io/actions/actions-runner:latest", "Docker image for runners")
+	f.StringVar(&cfg.Provisioner, "provisioner", "docker", "Provisioner backend: docker or libvirt")
+
+	// Docker
+	f.StringVar(&cfg.Image, "image", "ghcr.io/actions/actions-runner:latest", "Docker image for runners (docker provisioner)")
+
+	// Libvirt
+	f.StringVar(&cfg.ConfigFile, "config", "", "Config file path (required for libvirt provisioner)")
 
 	rootCmd.MarkFlagRequired("url")
 	rootCmd.MarkFlagRequired("token")
@@ -97,12 +111,9 @@ func run(ctx context.Context) error {
 	}()
 
 	// Create provisioner
-	prov, err := outrunner.NewDockerProvisioner(
-		logger.WithGroup("docker"),
-		outrunner.DockerConfig{Image: cfg.Image},
-	)
+	prov, err := createProvisioner(logger)
 	if err != nil {
-		return fmt.Errorf("create docker provisioner: %w", err)
+		return fmt.Errorf("create provisioner: %w", err)
 	}
 	defer prov.Close()
 
@@ -136,8 +147,8 @@ func run(ctx context.Context) error {
 
 	logger.Info("Listening for jobs",
 		slog.String("runsOn", cfg.Name),
+		slog.String("provisioner", cfg.Provisioner),
 		slog.Int("maxRunners", cfg.MaxRunners),
-		slog.String("image", cfg.Image),
 	)
 
 	err = l.Run(ctx, scaler)
@@ -151,4 +162,36 @@ func run(ctx context.Context) error {
 
 	logger.Info("Shut down cleanly")
 	return nil
+}
+
+func createProvisioner(logger *slog.Logger) (outrunner.Provisioner, error) {
+	switch cfg.Provisioner {
+	case "docker":
+		return outrunner.NewDockerProvisioner(
+			logger.WithGroup("docker"),
+			outrunner.DockerConfig{Image: cfg.Image},
+		)
+
+	case "libvirt":
+		if cfg.ConfigFile == "" {
+			return nil, fmt.Errorf("--config is required for libvirt provisioner")
+		}
+		config, err := outrunner.LoadConfig(cfg.ConfigFile)
+		if err != nil {
+			return nil, err
+		}
+		prov, err := outrunner.NewLibvirtProvisioner(
+			logger.WithGroup("libvirt"),
+			outrunner.LibvirtConfig{Config: config},
+		)
+		if err != nil {
+			return nil, err
+		}
+		// Clean up orphaned VMs from previous runs
+		prov.Cleanup(cfg.Name + "-")
+		return prov, nil
+
+	default:
+		return nil, fmt.Errorf("unknown provisioner: %s", cfg.Provisioner)
+	}
 }
