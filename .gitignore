@@ -1,0 +1,4 @@
+# Built binaries
+/outrunner
+/cmd/outrunner/outrunner
+*.exe
