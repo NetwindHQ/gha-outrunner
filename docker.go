@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -26,7 +29,17 @@ type DockerConfig struct {
 }
 
 func NewDockerProvisioner(logger *slog.Logger, cfg DockerConfig) (*DockerProvisioner, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	opts := []client.Opt{client.FromEnv, client.WithAPIVersionNegotiation()}
+
+	// If DOCKER_HOST isn't set, ask the docker CLI for the active context's endpoint.
+	if os.Getenv("DOCKER_HOST") == "" {
+		if host := dockerHostFromContext(); host != "" {
+			logger.Info("Auto-detected Docker host", slog.String("host", host))
+			opts = append(opts, client.WithHost(host))
+		}
+	}
+
+	cli, err := client.NewClientWithOpts(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("docker client: %w", err)
 	}
@@ -38,15 +51,38 @@ func NewDockerProvisioner(logger *slog.Logger, cfg DockerConfig) (*DockerProvisi
 	}, nil
 }
 
-func (d *DockerProvisioner) Start(ctx context.Context, req *RunnerRequest) error {
-	// Pull image if not present
-	d.logger.Debug("Pulling image", slog.String("image", d.image))
-	reader, err := d.client.ImagePull(ctx, d.image, image.PullOptions{})
+// dockerHostFromContext asks the docker CLI for the active context's endpoint.
+// Works with Colima, Docker Desktop, Podman, etc.
+func dockerHostFromContext() string {
+	out, err := exec.Command("docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}").Output()
 	if err != nil {
-		return fmt.Errorf("pull image: %w", err)
+		return ""
 	}
-	io.Copy(io.Discard, reader)
-	reader.Close()
+	host := strings.TrimSpace(string(out))
+	if host == "" || host == "<no value>" {
+		return ""
+	}
+	// Verify the socket actually exists
+	if strings.HasPrefix(host, "unix://") {
+		if _, err := os.Stat(strings.TrimPrefix(host, "unix://")); err != nil {
+			return ""
+		}
+	}
+	return host
+}
+
+func (d *DockerProvisioner) Start(ctx context.Context, req *RunnerRequest) error {
+	// Pull image only if not available locally
+	_, _, err := d.client.ImageInspectWithRaw(ctx, d.image)
+	if err != nil {
+		d.logger.Debug("Pulling image", slog.String("image", d.image))
+		reader, pullErr := d.client.ImagePull(ctx, d.image, image.PullOptions{})
+		if pullErr != nil {
+			return fmt.Errorf("pull image: %w", pullErr)
+		}
+		io.Copy(io.Discard, reader)
+		reader.Close()
+	}
 
 	resp, err := d.client.ContainerCreate(ctx,
 		&container.Config{

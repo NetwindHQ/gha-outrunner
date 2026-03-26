@@ -66,22 +66,28 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create scaleset client: %w", err)
 	}
 
-	// Register scale set
-	logger.Info("Creating scale set", slog.String("name", cfg.Name))
-	scaleSet, err := client.CreateRunnerScaleSet(ctx, &scaleset.RunnerScaleSet{
-		Name:          cfg.Name,
-		RunnerGroupID: 1,
-		Labels: []scaleset.Label{
-			{Name: cfg.Name, Type: "User"},
-		},
-		RunnerSetting: scaleset.RunnerSetting{
-			DisableUpdate: true,
-		},
-	})
+	// Get or create scale set
+	logger.Info("Looking for scale set", slog.String("name", cfg.Name))
+	scaleSet, err := client.GetRunnerScaleSet(ctx, 1, cfg.Name)
 	if err != nil {
-		return fmt.Errorf("create scale set: %w", err)
+		logger.Info("Scale set not found, creating", slog.String("name", cfg.Name))
+		scaleSet, err = client.CreateRunnerScaleSet(ctx, &scaleset.RunnerScaleSet{
+			Name:          cfg.Name,
+			RunnerGroupID: 1,
+			Labels: []scaleset.Label{
+				{Name: cfg.Name, Type: "User"},
+			},
+			RunnerSetting: scaleset.RunnerSetting{
+				DisableUpdate: true,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("create scale set: %w", err)
+		}
+		logger.Info("Scale set created", slog.Int("id", scaleSet.ID))
+	} else {
+		logger.Info("Using existing scale set", slog.Int("id", scaleSet.ID))
 	}
-	logger.Info("Scale set created", slog.Int("id", scaleSet.ID))
 
 	defer func() {
 		logger.Info("Deleting scale set")
