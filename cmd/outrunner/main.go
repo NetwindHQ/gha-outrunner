@@ -137,6 +137,13 @@ func run(ctx context.Context) error {
 		logger.Info("Libvirt provisioner initialized")
 	}
 
+	if config.NeedsTart() {
+		prov := outrunner.NewTartProvisioner(logger.WithGroup("tart"))
+		prov.Cleanup(cfg.Name + "-")
+		multi.Register("tart", prov)
+		logger.Info("Tart provisioner initialized")
+	}
+
 	defer multi.Close()
 
 	// Create message session

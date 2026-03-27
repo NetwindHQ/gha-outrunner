@@ -2,11 +2,15 @@ name: Test Outrunner
 
 on:
   workflow_dispatch:
+    inputs:
+      label:
+        description: "runs-on label"
+        required: true
+        default: "linux-arm64"
 
 jobs:
   smoke:
-    runs-on: outrunner
+    runs-on: ${{ inputs.label }}
     steps:
       - run: echo "Hello from outrunner!"
       - run: uname -a
-      - run: cat /etc/os-release

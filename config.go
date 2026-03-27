@@ -13,11 +13,12 @@ type Config struct {
 }
 
 // ImageConfig defines a runner environment and the label it satisfies.
-// Exactly one of Docker, Libvirt (or future backends) must be set.
+// Exactly one of Docker, Libvirt, or Tart must be set.
 type ImageConfig struct {
 	Label   string         `yaml:"label"`
 	Docker  *DockerImage   `yaml:"docker,omitempty"`
 	Libvirt *LibvirtImage  `yaml:"libvirt,omitempty"`
+	Tart    *TartImage     `yaml:"tart,omitempty"`
 }
 
 // DockerImage configures a Docker-based runner.
@@ -33,6 +34,14 @@ type LibvirtImage struct {
 	MemoryMB  int    `yaml:"memory"`
 }
 
+// TartImage configures a Tart-based runner (macOS/Linux on Apple Silicon).
+type TartImage struct {
+	Image     string `yaml:"image"`      // OCI image or local VM name
+	RunnerCmd string `yaml:"runner_cmd"`
+	CPUs      int    `yaml:"cpus"`
+	MemoryMB  int    `yaml:"memory"`
+}
+
 // ProviderType returns which provisioner backend this image uses.
 func (img *ImageConfig) ProviderType() string {
 	switch {
@@ -40,6 +49,8 @@ func (img *ImageConfig) ProviderType() string {
 		return "docker"
 	case img.Libvirt != nil:
 		return "libvirt"
+	case img.Tart != nil:
+		return "tart"
 	default:
 		return ""
 	}
@@ -64,7 +75,7 @@ func LoadConfig(path string) (*Config, error) {
 			return nil, fmt.Errorf("image %d: label is required", i)
 		}
 		if img.ProviderType() == "" {
-			return nil, fmt.Errorf("image %q: must specify docker or libvirt", img.Label)
+			return nil, fmt.Errorf("image %q: must specify docker, libvirt, or tart", img.Label)
 		}
 
 		// Apply defaults for libvirt images
@@ -74,6 +85,16 @@ func LoadConfig(path string) (*Config, error) {
 			}
 			if img.Libvirt.MemoryMB == 0 {
 				img.Libvirt.MemoryMB = 8192
+			}
+		}
+
+		// Apply defaults for tart images
+		if img.Tart != nil {
+			if img.Tart.CPUs == 0 {
+				img.Tart.CPUs = 4
+			}
+			if img.Tart.MemoryMB == 0 {
+				img.Tart.MemoryMB = 8192
 			}
 		}
 	}
@@ -121,6 +142,16 @@ func (c *Config) NeedsDocker() bool {
 func (c *Config) NeedsLibvirt() bool {
 	for _, img := range c.Images {
 		if img.Libvirt != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// NeedsTart returns true if any image uses the Tart backend.
+func (c *Config) NeedsTart() bool {
+	for _, img := range c.Images {
+		if img.Tart != nil {
 			return true
 		}
 	}
