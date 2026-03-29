@@ -2,3 +2,4 @@
 /outrunner
 /cmd/outrunner/outrunner
 *.exe
+test-*.yml

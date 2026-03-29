@@ -87,7 +87,7 @@ func run(ctx context.Context) error {
 	// Get or create scale set
 	logger.Info("Looking for scale set", slog.String("name", cfg.Name))
 	scaleSet, err := client.GetRunnerScaleSet(ctx, 1, cfg.Name)
-	if err != nil {
+	if err != nil || scaleSet == nil {
 		logger.Info("Scale set not found, creating", slog.String("name", cfg.Name))
 		scaleSet, err = client.CreateRunnerScaleSet(ctx, &scaleset.RunnerScaleSet{
 			Name:          cfg.Name,

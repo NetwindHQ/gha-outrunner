@@ -87,7 +87,7 @@ func (t *TartProvisioner) Start(ctx context.Context, req *RunnerRequest) error {
 
 	go func() {
 		out, err := exec.CommandContext(runCtx, "tart", "exec", req.Name,
-			"--", runnerCmd, "--jitconfig", req.JITConfig,
+			runnerCmd, "--jitconfig", req.JITConfig,
 		).CombinedOutput()
 		if err != nil && runCtx.Err() == nil {
 			t.logger.Error("Runner exited with error",
@@ -132,7 +132,7 @@ func (t *TartProvisioner) Close() error {
 
 // Cleanup removes orphaned VMs from previous runs.
 func (t *TartProvisioner) Cleanup(prefix string) {
-	out, err := exec.Command("tart", "list", "--format", "plain").Output()
+	out, err := exec.Command("tart", "list", "--quiet").Output()
 	if err != nil {
 		t.logger.Error("Failed to list VMs for cleanup", slog.String("error", err.Error()))
 		return
@@ -166,7 +166,7 @@ func (t *TartProvisioner) waitForAgent(ctx context.Context, name string, timeout
 			return fmt.Errorf("timeout after %v", timeout)
 		}
 
-		err := exec.CommandContext(ctx, "tart", "exec", name, "--", "echo", "ok").Run()
+		err := exec.CommandContext(ctx, "tart", "exec", name, "echo", "ok").Run()
 		if err == nil {
 			return nil
 		}

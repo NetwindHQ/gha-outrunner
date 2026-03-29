@@ -102,9 +102,18 @@ func LoadConfig(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-// MatchImage finds the image whose label appears in the job labels.
-// Returns an error if no image matches.
+// MatchImage finds the image for a job based on its labels.
+// If labels are empty (scaleset API doesn't expose them yet — see #20),
+// falls back to the first image.
 func (c *Config) MatchImage(jobLabels []string) (*ImageConfig, error) {
+	if len(c.Images) == 0 {
+		return nil, fmt.Errorf("no images configured")
+	}
+
+	if len(jobLabels) == 0 {
+		return &c.Images[0], nil
+	}
+
 	jobSet := make(map[string]bool, len(jobLabels))
 	for _, l := range jobLabels {
 		jobSet[l] = true
