@@ -15,10 +15,10 @@ type Config struct {
 // ImageConfig defines a runner environment and the label it satisfies.
 // Exactly one of Docker, Libvirt, or Tart must be set.
 type ImageConfig struct {
-	Label   string         `yaml:"label"`
-	Docker  *DockerImage   `yaml:"docker,omitempty"`
-	Libvirt *LibvirtImage  `yaml:"libvirt,omitempty"`
-	Tart    *TartImage     `yaml:"tart,omitempty"`
+	Label   string        `yaml:"label"`
+	Docker  *DockerImage  `yaml:"docker,omitempty"`
+	Libvirt *LibvirtImage `yaml:"libvirt,omitempty"`
+	Tart    *TartImage    `yaml:"tart,omitempty"`
 }
 
 // DockerImage configures a Docker-based runner.
@@ -36,7 +36,7 @@ type LibvirtImage struct {
 
 // TartImage configures a Tart-based runner (macOS/Linux on Apple Silicon).
 type TartImage struct {
-	Image     string `yaml:"image"`      // OCI image or local VM name
+	Image     string `yaml:"image"` // OCI image or local VM name
 	RunnerCmd string `yaml:"runner_cmd"`
 	CPUs      int    `yaml:"cpus"`
 	MemoryMB  int    `yaml:"memory"`
