@@ -6,7 +6,7 @@
 
 outrunner requires a fine-grained Personal Access Token with **Administration read/write** permission. This token is used to:
 
-1. Register and delete scale sets on the repository or organization.
+1. Register scale sets and manage runners on the repository or organization.
 2. Generate JIT runner configuration tokens for each job.
 
 The PAT is held in outrunner's process memory. It is never written to disk, passed to containers, or injected into VMs. Protect it as you would any credential with write access to your repository settings.

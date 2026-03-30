@@ -42,8 +42,9 @@ Organization-wide, higher default concurrency:
 ## Behavior
 
 - On startup, outrunner creates one scale set per runner defined in the config file. Each scale set is named after the runner's key in the `runners` map. If a scale set with that name already exists, it is reused.
-- On shutdown (Ctrl+C / SIGINT), outrunner stops all running environments and deletes the scale sets.
-- If outrunner is force-killed (SIGKILL), the scale sets and any running environments may be left behind. On next startup, each provisioner cleans up orphaned environments whose names start with the runner's key.
+- Scale sets are kept across restarts. They are not deleted on shutdown.
+- On shutdown (Ctrl+C / SIGINT), outrunner stops all running environments and deregisters their runners from GitHub.
+- If outrunner is force-killed (SIGKILL), running environments may be left behind. On next startup, each provisioner cleans up orphaned environments whose names start with the runner's key.
 
 ## GitHub PAT Requirements
 

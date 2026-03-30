@@ -122,11 +122,11 @@ The workflow run on GitHub should show a green checkmark.
 Press Ctrl+C in the outrunner terminal. It will stop cleanly:
 
 ```
+level=INFO msg="All runners shut down"
 level=INFO msg="Shut down cleanly"
-level=INFO msg="Deleting scale set"
 ```
 
-The scale set is removed from GitHub, and any running containers are stopped.
+Any running containers are stopped. The scale set is kept on GitHub for reuse on next startup.
 
 ## What Happened
 

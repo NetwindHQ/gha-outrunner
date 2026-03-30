@@ -39,7 +39,7 @@ GitHub finds the scale set whose labels satisfy the `runs-on` requirement and ro
 
 ## No Internal Label Routing
 
-In the previous architecture, outrunner had a single scale set with all labels and performed internal label routing via a MultiProvisioner. This is no longer the case. Each runner has its own scale set, and GitHub handles all routing. outrunner simply provisions whatever the listener for that runner receives.
+outrunner does not perform any internal label routing. Each runner has its own scale set, and GitHub handles all routing. outrunner simply provisions whatever the listener for that runner receives.
 
 ## Per-Runner Concurrency
 
