@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/actions/scaleset"
 	"github.com/actions/scaleset/listener"
@@ -173,7 +174,9 @@ func runWorker(ctx context.Context, logger *slog.Logger, client *scaleset.Client
 	logger.Info("Listening for jobs", slog.Int("maxRunners", maxRunners))
 	err = l.Run(ctx, scaler)
 
-	scaler.Shutdown(context.Background())
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+	scaler.Shutdown(shutdownCtx)
 
 	if !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("runner %s: listener: %w", name, err)
