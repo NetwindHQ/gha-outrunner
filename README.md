@@ -107,8 +107,3 @@ Background and design decisions.
 - [Architecture](docs/explanation/architecture.md)
 - [Why outrunner](docs/explanation/why-outrunner.md)
 - [Security model](docs/explanation/security.md)
-- [How label matching works](docs/explanation/label-matching.md)
-
-## License
-
-MIT
