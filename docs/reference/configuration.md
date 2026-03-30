@@ -58,7 +58,7 @@ jobs:
 
 ### `runners.<name>.max_runners`
 
-**Optional.** Maximum number of concurrent runners for this scale set. If not specified, defaults to the `--max-runners` CLI flag value.
+**Optional.** Maximum number of concurrent runners for this scale set. If not specified, defaults to the `--max-runners` CLI flag value. Set to `0` to drain the queue (stop accepting new jobs while letting running ones finish).
 
 ```yaml
 runners:

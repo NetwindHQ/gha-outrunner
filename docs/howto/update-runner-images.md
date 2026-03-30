@@ -91,6 +91,21 @@ tart pull ghcr.io/your-org/runner:latest
 
 3. New clones will use the updated image.
 
+## Queue Draining
+
+If you need to stop a runner from accepting new jobs while letting in-flight jobs finish (e.g., before a host reboot or major image update), set `max_runners: 0` in the config and restart outrunner:
+
+```yaml
+runners:
+  linux:
+    labels: [self-hosted, linux]
+    max_runners: 0      # stop accepting new jobs
+    docker:
+      image: runner:latest
+```
+
+outrunner will keep its scale set registered but won't provision new runners. Once all running jobs complete, the host is idle and safe to maintain. Set `max_runners` back to the desired value and restart when ready.
+
 ## Updating the Actions Runner Agent
 
 GitHub occasionally releases new versions of the runner agent. Since outrunner sets `DisableUpdate: true` on the scale set, the runner won't auto-update. To update:
