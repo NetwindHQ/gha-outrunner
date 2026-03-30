@@ -59,7 +59,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := slog.New(outrunner.NewSimpleHandler(os.Stdout, slog.LevelDebug))
 
 	config, err := outrunner.LoadConfig(cfg.ConfigFile)
 	if err != nil {
