@@ -36,6 +36,7 @@ runner group, then creates and destroys runner environments on demand.
 
 Each runner definition in the config file gets its own scale set. GitHub
 routes jobs to the correct scale set based on labels.`,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt)
 		defer cancel()
