@@ -59,7 +59,8 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	logger := slog.New(outrunner.NewSimpleHandler(os.Stdout, slog.LevelDebug))
+	logger := slog.New(outrunner.NewSimpleHandler(os.Stdout, slog.LevelInfo))
+	listenerLogger := slog.New(outrunner.NewSimpleHandler(os.Stdout, slog.LevelWarn))
 
 	config, err := outrunner.LoadConfig(cfg.ConfigFile)
 	if err != nil {
@@ -92,7 +93,7 @@ func run(ctx context.Context) error {
 			maxRunners = cfg.MaxRunners
 		}
 		g.Go(func() error {
-			return runWorker(ctx, logger, client, name, &runner, maxRunners)
+			return runWorker(ctx, logger, listenerLogger, client, name, &runner, maxRunners)
 		})
 	}
 
@@ -105,7 +106,7 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func runWorker(ctx context.Context, logger *slog.Logger, client *scaleset.Client, name string, runner *outrunner.RunnerConfig, maxRunners int) error {
+func runWorker(ctx context.Context, logger, listenerLogger *slog.Logger, client *scaleset.Client, name string, runner *outrunner.RunnerConfig, maxRunners int) error {
 	logger = logger.With(slog.String("scaleSet", name))
 
 	// Create provisioner
@@ -171,7 +172,7 @@ func runWorker(ctx context.Context, logger *slog.Logger, client *scaleset.Client
 	l, err := listener.New(sessionClient, listener.Config{
 		ScaleSetID: scaleSet.ID,
 		MaxRunners: maxRunners,
-		Logger:     logger.WithGroup("listener"),
+		Logger:     listenerLogger.WithGroup("listener"),
 	})
 	if err != nil {
 		return fmt.Errorf("runner %s: create listener: %w", name, err)
