@@ -30,6 +30,21 @@ nfpms:
       - deb
       - rpm
     bindir: /usr/bin
+    contents:
+      - src: packaging/outrunner.service
+        dst: /lib/systemd/system/outrunner.service
+      - src: packaging/config.yml
+        dst: /etc/outrunner/config.yml
+        type: "config|noreplace"
+      - dst: /etc/outrunner
+        type: dir
+        file_info:
+          mode: 0750
+          owner: outrunner
+          group: outrunner
+    scripts:
+      postinstall: scripts/postinstall.sh
+      preremove: scripts/preremove.sh
 
 homebrew_casks:
   - name: outrunner

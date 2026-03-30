@@ -1,0 +1,31 @@
+[Unit]
+Description=outrunner - ephemeral GitHub Actions runners
+Documentation=https://github.com/NetwindHQ/gha-outrunner
+After=network-online.target docker.service libvirtd.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=outrunner
+Group=outrunner
+ExecStart=/usr/bin/outrunner --config /etc/outrunner/config.yml
+Restart=on-failure
+RestartSec=5s
+
+# Token via systemd-creds (recommended):
+#   systemd-creds encrypt --name=github-token - /etc/outrunner/github-token.cred
+#   Then uncomment the next line:
+# LoadCredentialEncrypted=github-token:/etc/outrunner/github-token.cred
+
+# Token via environment file (alternative):
+EnvironmentFile=-/etc/outrunner/env
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/tmp
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

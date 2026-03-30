@@ -1,94 +1,110 @@
 # How to Deploy as a systemd Service
 
-Run outrunner as a persistent service on Linux so it starts on boot and restarts on failure.
+Install the deb or rpm package. It includes a systemd unit, default config, and creates an `outrunner` system user.
 
-## 1. Install the Binary
-
-```bash
-sudo cp outrunner /usr/local/bin/outrunner
-sudo chmod +x /usr/local/bin/outrunner
-```
-
-## 2. Create a Config File
+## 1. Install
 
 ```bash
-sudo mkdir -p /etc/outrunner
-sudo cp outrunner.yml /etc/outrunner/config.yml
+# Ubuntu/Debian
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
+sudo dpkg -i outrunner_amd64.deb
+
+# CentOS/RHEL
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.rpm
+sudo rpm -i outrunner_amd64.rpm
 ```
 
-## 3. Store the Token
+The package creates:
+- `/usr/bin/outrunner`
+- `/lib/systemd/system/outrunner.service`
+- `/etc/outrunner/config.yml` (default config, preserved on upgrade)
+- `outrunner` system user and group
 
-Create an environment file that systemd will load. This keeps the token out of the unit file:
+## 2. Configure
 
-```bash
-sudo tee /etc/outrunner/env > /dev/null <<'EOF'
-OUTRUNNER_TOKEN=ghp_YOUR_TOKEN_HERE
-EOF
-sudo chmod 600 /etc/outrunner/env
+Edit `/etc/outrunner/config.yml`:
+
+```yaml
+url: https://github.com/your-org/your-repo
+
+runners:
+  linux:
+    labels: [self-hosted, linux]
+    docker:
+      image: ghcr.io/actions/actions-runner:latest
 ```
 
-## 4. Create a Service User
-
-```bash
-sudo useradd --system --no-create-home outrunner
-```
-
-If using Docker, add the user to the `docker` group:
+If using Docker, add the outrunner user to the docker group:
 
 ```bash
 sudo usermod -aG docker outrunner
 ```
 
-If using libvirt, add to the `libvirt` group:
+If using libvirt, add to the libvirt group and ensure qcow2 images are readable by the outrunner user:
 
 ```bash
 sudo usermod -aG libvirt outrunner
+sudo chmod -R o+r /var/lib/libvirt/images/ci-runners/
 ```
 
-## 5. Create the Unit File
+## 3. Set Up the Token
+
+### Option A: systemd-creds (recommended, encrypted at rest)
+
+Requires systemd v250+ (Ubuntu 22.04+, Debian 12+).
 
 ```bash
-sudo tee /etc/systemd/system/outrunner.service > /dev/null <<'EOF'
-[Unit]
-Description=outrunner - ephemeral GitHub Actions runners
-After=network-online.target docker.service libvirtd.service
-Wants=network-online.target
+echo -n "ghp_YOUR_TOKEN" | sudo systemd-creds encrypt --name=github-token - /etc/outrunner/github-token.cred
+sudo chown outrunner:outrunner /etc/outrunner/github-token.cred
+```
 
+Then uncomment the `LoadCredentialEncrypted` line in the unit file:
+
+```bash
+sudo systemctl edit outrunner
+```
+
+Add:
+
+```ini
 [Service]
-Type=simple
-User=outrunner
-EnvironmentFile=/etc/outrunner/env
-ExecStart=/usr/local/bin/outrunner \
-    --url https://github.com/your/repo \
-    --token ${OUTRUNNER_TOKEN} \
-    --config /etc/outrunner/config.yml \
-    --max-runners 2
-Restart=on-failure
-RestartSec=10
-
-# Security hardening
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/tmp
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
-EOF
+LoadCredentialEncrypted=github-token:/etc/outrunner/github-token.cred
 ```
 
-If using libvirt with overlay files outside `/tmp`, add the overlay directory to `ReadWritePaths`.
+The encrypted credential can only be decrypted on this machine. Even if the file is exfiltrated, it's useless elsewhere.
 
-## 6. Enable and Start
+### Option B: Environment file (simpler)
 
 ```bash
-sudo systemctl daemon-reload
+echo 'GITHUB_TOKEN=ghp_YOUR_TOKEN' | sudo tee /etc/outrunner/env
+sudo chmod 600 /etc/outrunner/env
+sudo chown outrunner:outrunner /etc/outrunner/env
+```
+
+The systemd unit loads this file automatically.
+
+### Option C: Token file
+
+```bash
+echo -n "ghp_YOUR_TOKEN" | sudo tee /etc/outrunner/token
+sudo chmod 600 /etc/outrunner/token
+sudo chown outrunner:outrunner /etc/outrunner/token
+```
+
+Add to `/etc/outrunner/config.yml`:
+
+```yaml
+token_file: /etc/outrunner/token
+```
+
+## 4. Enable and Start
+
+```bash
 sudo systemctl enable outrunner
 sudo systemctl start outrunner
 ```
 
-## 7. Check Status
+## 5. Check Status
 
 ```bash
 sudo systemctl status outrunner
@@ -97,17 +113,15 @@ sudo journalctl -u outrunner -f
 
 ## Updating
 
-To update outrunner:
+Package upgrades preserve your config (marked `config|noreplace`). After installing a new version:
 
 ```bash
-sudo systemctl stop outrunner
-sudo cp outrunner-new /usr/local/bin/outrunner
-sudo systemctl start outrunner
+sudo systemctl restart outrunner
 ```
 
 ## Token Rotation
 
-Update the token in `/etc/outrunner/env` and restart:
+Update the token using whichever method you chose (re-encrypt with systemd-creds, update the env file, or update the token file), then restart:
 
 ```bash
 sudo systemctl restart outrunner

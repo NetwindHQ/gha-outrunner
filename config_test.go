@@ -249,6 +249,129 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 	}
 }
 
+func TestLoadConfigURLAndTokenFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `url: https://github.com/myorg
+token_file: /etc/outrunner/token
+runners:
+  linux:
+    labels: [linux]
+    docker:
+      image: runner:latest
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	if cfg.URL != "https://github.com/myorg" {
+		t.Errorf("expected URL https://github.com/myorg, got %s", cfg.URL)
+	}
+	if cfg.TokenFile != "/etc/outrunner/token" {
+		t.Errorf("expected token_file /etc/outrunner/token, got %s", cfg.TokenFile)
+	}
+}
+
+func TestResolveToken(t *testing.T) {
+	t.Run("flag takes precedence", func(t *testing.T) {
+		token, err := ResolveToken("flag-token", &Config{TokenFile: "/nonexistent"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "flag-token" {
+			t.Errorf("expected flag-token, got %s", token)
+		}
+	})
+
+	t.Run("env var", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "env-token")
+		token, err := ResolveToken("", &Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "env-token" {
+			t.Errorf("expected env-token, got %s", token)
+		}
+	})
+
+	t.Run("credentials directory", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "github-token"), []byte("  cred-token\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("CREDENTIALS_DIRECTORY", dir)
+		t.Setenv("GITHUB_TOKEN", "")
+		token, err := ResolveToken("", &Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "cred-token" {
+			t.Errorf("expected cred-token, got %q", token)
+		}
+	})
+
+	t.Run("token file", func(t *testing.T) {
+		dir := t.TempDir()
+		tokenPath := filepath.Join(dir, "token")
+		if err := os.WriteFile(tokenPath, []byte("file-token\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("CREDENTIALS_DIRECTORY", "")
+		token, err := ResolveToken("", &Config{TokenFile: tokenPath})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "file-token" {
+			t.Errorf("expected file-token, got %q", token)
+		}
+	})
+
+	t.Run("nothing configured", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("CREDENTIALS_DIRECTORY", "")
+		_, err := ResolveToken("", &Config{})
+		if err == nil {
+			t.Fatal("expected error when no token source available")
+		}
+	})
+}
+
+func TestResolveURL(t *testing.T) {
+	t.Run("flag takes precedence", func(t *testing.T) {
+		url, err := ResolveURL("https://flag.com", &Config{URL: "https://config.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if url != "https://flag.com" {
+			t.Errorf("expected https://flag.com, got %s", url)
+		}
+	})
+
+	t.Run("config fallback", func(t *testing.T) {
+		url, err := ResolveURL("", &Config{URL: "https://config.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if url != "https://config.com" {
+			t.Errorf("expected https://config.com, got %s", url)
+		}
+	})
+
+	t.Run("nothing configured", func(t *testing.T) {
+		_, err := ResolveURL("", &Config{})
+		if err == nil {
+			t.Fatal("expected error when no URL source available")
+		}
+	})
+}
+
 func TestProviderType(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -1,0 +1,17 @@
+# outrunner configuration
+# See https://github.com/NetwindHQ/gha-outrunner/blob/main/docs/reference/configuration.md
+
+url: https://github.com/your-org/your-repo
+
+# Token is read from (in order of precedence):
+# 1. --token CLI flag
+# 2. GITHUB_TOKEN environment variable (set in /etc/outrunner/env)
+# 3. systemd-creds ($CREDENTIALS_DIRECTORY/github-token)
+# 4. token_file below
+# token_file: /etc/outrunner/token
+
+runners: {}
+#  linux:
+#    labels: [self-hosted, linux]
+#    docker:
+#      image: ghcr.io/actions/actions-runner:latest

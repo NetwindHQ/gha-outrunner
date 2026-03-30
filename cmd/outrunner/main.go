@@ -45,14 +45,10 @@ routes jobs to the correct scale set based on labels.`,
 
 func init() {
 	f := rootCmd.Flags()
-	f.StringVar(&cfg.URL, "url", "", "Repository or org URL (e.g. https://github.com/owner/repo)")
-	f.StringVar(&cfg.Token, "token", "", "GitHub PAT (fine-grained, Administration read/write)")
+	f.StringVar(&cfg.URL, "url", "", "Repository or org URL (overrides config file)")
+	f.StringVar(&cfg.Token, "token", "", "GitHub PAT (overrides GITHUB_TOKEN env var and config)")
 	f.IntVar(&cfg.MaxRunners, "max-runners", 2, "Default max concurrent runners per scale set")
-	f.StringVar(&cfg.ConfigFile, "config", "", "Config file path (YAML)")
-
-	_ = rootCmd.MarkFlagRequired("url")
-	_ = rootCmd.MarkFlagRequired("token")
-	_ = rootCmd.MarkFlagRequired("config")
+	f.StringVar(&cfg.ConfigFile, "config", "/etc/outrunner/config.yml", "Config file path (YAML)")
 }
 
 func main() {
@@ -70,9 +66,19 @@ func run(ctx context.Context) error {
 	}
 	logger.Info("Loaded config", slog.Int("runners", len(config.Runners)))
 
+	url, err := outrunner.ResolveURL(cfg.URL, config)
+	if err != nil {
+		return err
+	}
+
+	token, err := outrunner.ResolveToken(cfg.Token, config)
+	if err != nil {
+		return err
+	}
+
 	client, err := scaleset.NewClientWithPersonalAccessToken(scaleset.NewClientWithPersonalAccessTokenConfig{
-		GitHubConfigURL:     cfg.URL,
-		PersonalAccessToken: cfg.Token,
+		GitHubConfigURL:     url,
+		PersonalAccessToken: token,
 	})
 	if err != nil {
 		return fmt.Errorf("create scaleset client: %w", err)

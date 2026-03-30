@@ -3,13 +3,17 @@ package outrunner
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
 // Config is the outrunner configuration file format.
 type Config struct {
-	Runners map[string]RunnerConfig `yaml:"runners"`
+	URL       string                  `yaml:"url"`
+	TokenFile string                  `yaml:"token_file"`
+	Runners   map[string]RunnerConfig `yaml:"runners"`
 }
 
 // RunnerConfig defines a runner environment and the scale set it registers.
@@ -108,4 +112,53 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// ResolveToken determines the GitHub token using the following precedence:
+//  1. flagToken (--token CLI flag)
+//  2. GITHUB_TOKEN environment variable
+//  3. $CREDENTIALS_DIRECTORY/github-token (systemd-creds)
+//  4. token_file from config
+func ResolveToken(flagToken string, cfg *Config) (string, error) {
+	// 1. CLI flag
+	if flagToken != "" {
+		return flagToken, nil
+	}
+
+	// 2. Environment variable
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		return token, nil
+	}
+
+	// 3. systemd credentials directory
+	if credDir := os.Getenv("CREDENTIALS_DIRECTORY"); credDir != "" {
+		path := filepath.Join(credDir, "github-token")
+		if data, err := os.ReadFile(path); err == nil {
+			return strings.TrimSpace(string(data)), nil
+		}
+	}
+
+	// 4. token_file from config
+	if cfg.TokenFile != "" {
+		data, err := os.ReadFile(cfg.TokenFile)
+		if err != nil {
+			return "", fmt.Errorf("read token_file %q: %w", cfg.TokenFile, err)
+		}
+		return strings.TrimSpace(string(data)), nil
+	}
+
+	return "", fmt.Errorf("no token provided (use --token, GITHUB_TOKEN env var, systemd-creds, or token_file in config)")
+}
+
+// ResolveURL determines the GitHub URL using the following precedence:
+//  1. flagURL (--url CLI flag)
+//  2. url from config
+func ResolveURL(flagURL string, cfg *Config) (string, error) {
+	if flagURL != "" {
+		return flagURL, nil
+	}
+	if cfg.URL != "" {
+		return cfg.URL, nil
+	}
+	return "", fmt.Errorf("no URL provided (use --url flag or url in config)")
 }
