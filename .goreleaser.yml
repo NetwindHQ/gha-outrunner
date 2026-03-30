@@ -46,17 +46,6 @@ nfpms:
       postinstall: scripts/postinstall.sh
       preremove: scripts/preremove.sh
 
-homebrew_casks:
-  - name: outrunner
-    binaries:
-      - outrunner
-    homepage: https://github.com/NetwindHQ/gha-outrunner
-    description: Ephemeral GitHub Actions runners, no Kubernetes required
-    repository:
-      owner: NetwindHQ
-      name: homebrew-tap
-      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-
 checksum:
   name_template: "checksums.txt"
 
