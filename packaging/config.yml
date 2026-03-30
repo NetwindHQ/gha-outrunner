@@ -10,8 +10,8 @@ url: https://github.com/your-org/your-repo
 # 4. token_file below
 # token_file: /etc/outrunner/token
 
-runners: {}
-#  linux:
-#    labels: [self-hosted, linux]
-#    docker:
-#      image: ghcr.io/actions/actions-runner:latest
+# runners:
+#   linux:
+#     labels: [self-hosted, linux]
+#     docker:
+#       image: ghcr.io/actions/actions-runner:latest
