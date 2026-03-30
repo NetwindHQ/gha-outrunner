@@ -136,12 +136,7 @@ func runWorker(ctx context.Context, logger *slog.Logger, client *scaleset.Client
 	}
 	logger.Info("Scale set ready", slog.Int("id", scaleSet.ID))
 
-	defer func() {
-		logger.Info("Deleting scale set")
-		if err := client.DeleteRunnerScaleSet(context.WithoutCancel(ctx), scaleSet.ID); err != nil {
-			logger.Error("Failed to delete scale set", slog.String("error", err.Error()))
-		}
-	}()
+	// Scale sets are reused across restarts. No deletion on shutdown.
 
 	// Create message session
 	hostname, _ := os.Hostname()
