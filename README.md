@@ -107,3 +107,7 @@ Background and design decisions.
 - [Architecture](docs/explanation/architecture.md)
 - [Why outrunner](docs/explanation/why-outrunner.md)
 - [Security model](docs/explanation/security.md)
+
+## Used by
+
+- [delo.so](https://delo.so) — Desktop, offline-first CAD for makers. Uses outrunner for CI, build and test pipelines.
