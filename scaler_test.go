@@ -2,6 +2,7 @@ package outrunner
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"sync"
@@ -17,6 +18,7 @@ type mockClient struct {
 	mu          sync.Mutex
 	nextID      int
 	removeCount atomic.Int32
+	jitErr      error // if set, GenerateJitRunnerConfig returns this error
 }
 
 func newMockClient() *mockClient {
@@ -24,6 +26,10 @@ func newMockClient() *mockClient {
 }
 
 func (m *mockClient) GenerateJitRunnerConfig(_ context.Context, setting *scaleset.RunnerScaleSetJitRunnerSetting, _ int) (*scaleset.RunnerScaleSetJitRunnerConfig, error) {
+	if m.jitErr != nil {
+		return nil, m.jitErr
+	}
+
 	m.mu.Lock()
 	id := m.nextID
 	m.nextID++
@@ -364,6 +370,210 @@ func TestConcurrentRunners(t *testing.T) {
 	stopped := prov.stoppedNames()
 	if len(stopped) != 3 {
 		t.Errorf("expected 3 Stop calls, got %d", len(stopped))
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestMaxRunnersClamping(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	s := NewScaler(noopLogger(), client, 1, 2, "test",
+		&RunnerConfig{Docker: &DockerImage{Image: "test:latest"}}, prov)
+
+	// Request more than max
+	count, err := s.HandleDesiredRunnerCount(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("HandleDesiredRunnerCount: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected count clamped to 2, got %d", count)
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestDesiredCountZero(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	s := newTestScaler(client, prov)
+
+	count, err := s.HandleDesiredRunnerCount(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("HandleDesiredRunnerCount: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected count 0, got %d", count)
+	}
+
+	runners := s.Runners()
+	if len(runners) != 0 {
+		t.Errorf("expected 0 runners, got %d", len(runners))
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestJitConfigError(t *testing.T) {
+	client := newMockClient()
+	client.jitErr = errors.New("GitHub API unavailable")
+	prov := newMockProvisioner()
+	s := newTestScaler(client, prov)
+
+	count, err := s.HandleDesiredRunnerCount(context.Background(), 1)
+	if err == nil {
+		t.Fatal("expected error from GenerateJitRunnerConfig")
+	}
+	if count != 0 {
+		t.Errorf("expected count 0 on JIT error, got %d", count)
+	}
+
+	runners := s.Runners()
+	if len(runners) != 0 {
+		t.Errorf("expected 0 runners on JIT error, got %d", len(runners))
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestJobCompletedUnknownRunner(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	s := newTestScaler(client, prov)
+
+	err := s.HandleJobCompleted(context.Background(), &scaleset.JobCompleted{
+		RunnerName: "nonexistent-runner",
+		Result:     "succeeded",
+	})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestJobStartedUnknownRunner(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	s := newTestScaler(client, prov)
+
+	err := s.HandleJobStarted(context.Background(), &scaleset.JobStarted{
+		RunnerName: "nonexistent-runner",
+	})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestJobCompletedDuringProvisioning(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	prov.startCh = make(chan struct{})
+	s := newTestScaler(client, prov)
+
+	_, _ = s.HandleDesiredRunnerCount(context.Background(), 1)
+	time.Sleep(50 * time.Millisecond)
+
+	runners := s.Runners()
+	if len(runners) != 1 {
+		t.Fatalf("expected 1 runner, got %d", len(runners))
+	}
+	name := runners[0].Name
+
+	// Job completes while still provisioning
+	_ = s.HandleJobCompleted(context.Background(), &scaleset.JobCompleted{
+		RunnerName: name,
+		Result:     "succeeded",
+	})
+
+	// Unblock Start
+	close(prov.startCh)
+	time.Sleep(100 * time.Millisecond)
+
+	// Runner should be cleaned up
+	runners = s.Runners()
+	if len(runners) != 0 {
+		t.Errorf("expected 0 runners, got %d", len(runners))
+	}
+
+	// Stop should still be called
+	stopped := prov.stoppedNames()
+	if len(stopped) != 1 {
+		t.Errorf("expected 1 Stop call, got %d", len(stopped))
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestJobStartedDuringProvisioning(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	prov.startCh = make(chan struct{})
+	s := newTestScaler(client, prov)
+
+	_, _ = s.HandleDesiredRunnerCount(context.Background(), 1)
+	time.Sleep(50 * time.Millisecond)
+
+	runners := s.Runners()
+	name := runners[0].Name
+
+	// Job starts while provisioning
+	_ = s.HandleJobStarted(context.Background(), &scaleset.JobStarted{
+		RunnerName: name,
+	})
+
+	// Phase should be Running even though Start hasn't returned
+	runners = s.Runners()
+	if runners[0].Phase != RunnerRunning {
+		t.Errorf("expected Running, got %s", runners[0].Phase)
+	}
+
+	// Unblock Start
+	close(prov.startCh)
+	time.Sleep(50 * time.Millisecond)
+
+	// Should stay Running (not reset to Idle)
+	runners = s.Runners()
+	if runners[0].Phase != RunnerRunning {
+		t.Errorf("expected Running after Start, got %s", runners[0].Phase)
+	}
+
+	s.Shutdown(context.Background())
+}
+
+func TestShutdownWithNoRunners(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	s := newTestScaler(client, prov)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	s.Shutdown(ctx)
+}
+
+func TestRunnerNamePrefix(t *testing.T) {
+	client := newMockClient()
+	prov := newMockProvisioner()
+	s := NewScaler(noopLogger(), client, 1, 10, "my-scale-set",
+		&RunnerConfig{Docker: &DockerImage{Image: "test:latest"}}, prov)
+
+	_, _ = s.HandleDesiredRunnerCount(context.Background(), 1)
+	time.Sleep(50 * time.Millisecond)
+
+	runners := s.Runners()
+	if len(runners) != 1 {
+		t.Fatalf("expected 1 runner, got %d", len(runners))
+	}
+
+	name := runners[0].Name
+	if len(name) < len("my-scale-set-") {
+		t.Fatalf("runner name too short: %s", name)
+	}
+	prefix := name[:len("my-scale-set-")]
+	if prefix != "my-scale-set-" {
+		t.Errorf("expected prefix 'my-scale-set-', got %q", prefix)
 	}
 
 	s.Shutdown(context.Background())

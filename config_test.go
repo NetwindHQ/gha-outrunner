@@ -140,6 +140,115 @@ func TestLoadConfigDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadConfigCustomValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  beefy:
+    labels: [linux]
+    libvirt:
+      path: /images/linux.qcow2
+      cpus: 16
+      memory: 32768
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	runner := cfg.Runners["beefy"]
+	if runner.Libvirt.CPUs != 16 {
+		t.Errorf("expected CPUs 16, got %d", runner.Libvirt.CPUs)
+	}
+	if runner.Libvirt.MemoryMB != 32768 {
+		t.Errorf("expected memory 32768, got %d", runner.Libvirt.MemoryMB)
+	}
+}
+
+func TestLoadConfigMaxRunners(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  linux:
+    labels: [linux]
+    max_runners: 8
+    docker:
+      image: runner:latest
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	if cfg.Runners["linux"].MaxRunners != 8 {
+		t.Errorf("expected max_runners 8, got %d", cfg.Runners["linux"].MaxRunners)
+	}
+}
+
+func TestLoadConfigRunnerCmd(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  linux:
+    labels: [linux]
+    docker:
+      image: runner:latest
+      runner_cmd: /custom/run.sh
+  windows:
+    labels: [windows]
+    libvirt:
+      path: /images/win.qcow2
+      runner_cmd: 'C:\runner\run.cmd'
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	if cfg.Runners["linux"].Docker.RunnerCmd != "/custom/run.sh" {
+		t.Errorf("expected /custom/run.sh, got %s", cfg.Runners["linux"].Docker.RunnerCmd)
+	}
+	if cfg.Runners["windows"].Libvirt.RunnerCmd != `C:\runner\run.cmd` {
+		t.Errorf("expected C:\\runner\\run.cmd, got %s", cfg.Runners["windows"].Libvirt.RunnerCmd)
+	}
+}
+
+func TestLoadConfigInvalidYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	if err := os.WriteFile(path, []byte("{{invalid yaml"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadConfig(path)
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestLoadConfigFileNotFound(t *testing.T) {
+	_, err := LoadConfig("/nonexistent/path/config.yml")
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+}
+
 func TestProviderType(t *testing.T) {
 	tests := []struct {
 		name   string
