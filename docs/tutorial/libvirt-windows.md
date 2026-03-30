@@ -123,8 +123,9 @@ Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?
 Create `outrunner.yml`:
 
 ```yaml
-images:
-  - label: windows
+runners:
+  windows:
+    labels: [self-hosted, windows]
     libvirt:
       path: /var/lib/libvirt/images/ci-runners/windows-builder.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'
@@ -147,10 +148,10 @@ Note: We set `--max-runners 1` because Windows VMs are resource-heavy.
 You should see:
 
 ```
-level=INFO msg="Loaded config" images=1
+level=INFO msg="Loaded config" runners=1
 level=INFO msg="Scale set created" id=7
 level=INFO msg="Libvirt provisioner initialized"
-level=INFO msg="Listening for jobs" scaleSet=outrunner maxRunners=1
+level=INFO msg="Listening for jobs" scaleSet=windows maxRunners=1
 ```
 
 ## 7. Create a Test Workflow
@@ -165,7 +166,7 @@ on:
 
 jobs:
   hello:
-    runs-on: windows
+    runs-on: [self-hosted, windows]
     steps:
       - run: echo "Hello from a Windows VM!"
       - run: systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
@@ -180,12 +181,12 @@ In the outrunner terminal:
 
 ```
 level=DEBUG msg="Creating overlay" libvirt.base=/var/lib/libvirt/images/ci-runners/windows-builder.qcow2
-level=DEBUG msg="Creating domain" libvirt.name=outrunner-a1b2c3d4
-level=DEBUG msg="Waiting for guest agent" libvirt.name=outrunner-a1b2c3d4
-level=INFO  msg="Starting runner in VM" libvirt.name=outrunner-a1b2c3d4
-level=INFO  msg="Runner started in VM" libvirt.name=outrunner-a1b2c3d4 libvirt.pid=1234
-level=INFO  msg="Job completed" scaler.runnerName=outrunner-a1b2c3d4 scaler.result=succeeded
-level=DEBUG msg="Stopping VM" libvirt.name=outrunner-a1b2c3d4
+level=DEBUG msg="Creating domain" libvirt.name=windows-a1b2c3d4
+level=DEBUG msg="Waiting for guest agent" libvirt.name=windows-a1b2c3d4
+level=INFO  msg="Starting runner in VM" libvirt.name=windows-a1b2c3d4
+level=INFO  msg="Runner started in VM" libvirt.name=windows-a1b2c3d4 libvirt.pid=1234
+level=INFO  msg="Job completed" scaler.runnerName=windows-a1b2c3d4 scaler.result=succeeded
+level=DEBUG msg="Stopping VM" libvirt.name=windows-a1b2c3d4
 ```
 
 The guest agent wait may take 30-90 seconds while Windows boots. After that, the runner starts and picks up the job.

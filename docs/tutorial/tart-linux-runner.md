@@ -64,8 +64,9 @@ Copy the token.
 Create `outrunner.yml`:
 
 ```yaml
-images:
-  - label: linux-arm64
+runners:
+  linux-arm64:
+    labels: [self-hosted, linux, arm64]
     tart:
       image: ubuntu-runner
       runner_cmd: /home/admin/actions-runner/run.sh
@@ -87,10 +88,10 @@ Note: The `runner_cmd` path depends on the image. For Cirrus Labs images, the ru
 You should see:
 
 ```
-level=INFO msg="Loaded config" images=1
+level=INFO msg="Loaded config" runners=1
 level=INFO msg="Scale set created" id=5
 level=INFO msg="Tart provisioner initialized"
-level=INFO msg="Listening for jobs" scaleSet=outrunner maxRunners=2
+level=INFO msg="Listening for jobs" scaleSet=linux-arm64 maxRunners=2
 ```
 
 ## 7. Create a Test Workflow
@@ -105,7 +106,7 @@ on:
 
 jobs:
   hello:
-    runs-on: linux-arm64
+    runs-on: [self-hosted, linux, arm64]
     steps:
       - run: echo "Hello from a Tart Linux VM!"
       - run: uname -a
@@ -119,14 +120,14 @@ Push this file and trigger it from GitHub → Actions → "Test Outrunner" → "
 In the outrunner terminal you'll see the VM lifecycle:
 
 ```
-level=DEBUG msg="Cloning VM" tart.image=ubuntu-runner tart.name=outrunner-a1b2c3d4
-level=DEBUG msg="Waiting for guest agent" tart.name=outrunner-a1b2c3d4
-level=DEBUG msg="Starting VM" tart.name=outrunner-a1b2c3d4
-level=INFO  msg="Starting runner in VM" tart.name=outrunner-a1b2c3d4
-level=INFO  msg="Runner started in VM" tart.name=outrunner-a1b2c3d4
-level=INFO  msg="Job started" scaler.runnerName=outrunner-a1b2c3d4
-level=INFO  msg="Job completed" scaler.runnerName=outrunner-a1b2c3d4 scaler.result=succeeded
-level=DEBUG msg="Stopping VM" tart.name=outrunner-a1b2c3d4
+level=DEBUG msg="Cloning VM" tart.image=ubuntu-runner tart.name=linux-arm64-a1b2c3d4
+level=DEBUG msg="Waiting for guest agent" tart.name=linux-arm64-a1b2c3d4
+level=DEBUG msg="Starting VM" tart.name=linux-arm64-a1b2c3d4
+level=INFO  msg="Starting runner in VM" tart.name=linux-arm64-a1b2c3d4
+level=INFO  msg="Runner started in VM" tart.name=linux-arm64-a1b2c3d4
+level=INFO  msg="Job started" scaler.runnerName=linux-arm64-a1b2c3d4
+level=INFO  msg="Job completed" scaler.runnerName=linux-arm64-a1b2c3d4 scaler.result=succeeded
+level=DEBUG msg="Stopping VM" tart.name=linux-arm64-a1b2c3d4
 ```
 
 The workflow on GitHub should show a green checkmark. The `uname -a` step will show `aarch64`, confirming it ran on ARM64 Linux.
@@ -141,7 +142,7 @@ tart delete ubuntu-runner
 
 ## How It Works
 
-1. outrunner clones the `ubuntu-runner` VM to create `outrunner-a1b2c3d4` (an independent copy).
+1. outrunner clones the `ubuntu-runner` VM to create `linux-arm64-a1b2c3d4` (an independent copy).
 2. It sets the CPU and memory allocation, then boots the VM headlessly.
 3. It waits for the Tart guest agent to respond (polling `tart exec <name> echo ok`).
 4. It launches the runner inside the VM via `tart exec`.

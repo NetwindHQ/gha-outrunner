@@ -74,8 +74,9 @@ docker run --rm my-runner go version   # verify tools are available
 ## Use in Config
 
 ```yaml
-images:
-  - label: linux
+runners:
+  linux:
+    labels: [self-hosted, linux]
     docker:
       image: my-runner:latest
 ```
@@ -98,11 +99,13 @@ docker build -t runner-node -f runner/Dockerfile.node runner/
 ```
 
 ```yaml
-images:
-  - label: linux-go
+runners:
+  linux-go:
+    labels: [self-hosted, linux, go]
     docker:
       image: runner-go:latest
-  - label: linux-node
+  linux-node:
+    labels: [self-hosted, linux, node]
     docker:
       image: runner-node:latest
 ```

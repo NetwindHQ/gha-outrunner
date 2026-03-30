@@ -23,8 +23,9 @@ docker build -t outrunner-runner:v2 runner/
 Update the config and restart outrunner:
 
 ```yaml
-images:
-  - label: linux
+runners:
+  linux:
+    labels: [self-hosted, linux]
     docker:
       image: outrunner-runner:v2
 ```

@@ -1,18 +1,24 @@
 # All three backends in one config.
-# outrunner routes each job to the right provisioner based on labels.
-images:
-  - label: linux
+# Each runner gets its own scale set. GitHub routes jobs by label matching.
+runners:
+  linux:
+    labels: [self-hosted, linux, x64]
+    max_runners: 4
     docker:
       image: outrunner-runner:latest
 
-  - label: windows
+  windows:
+    labels: [self-hosted, windows, x64]
+    max_runners: 1
     libvirt:
       path: /var/lib/libvirt/images/ci-runners/windows-builder.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'
       cpus: 4
       memory: 8192
 
-  - label: macos
+  macos:
+    labels: [self-hosted, macos, arm64]
+    max_runners: 1
     tart:
       image: ghcr.io/cirruslabs/macos-sequoia-base:latest
       runner_cmd: /actions-runner/run.sh

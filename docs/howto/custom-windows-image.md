@@ -110,8 +110,9 @@ mv /var/lib/libvirt/images/ci-runners/windows-builder-compressed.qcow2 \
 ## 7. Use in Config
 
 ```yaml
-images:
-  - label: windows
+runners:
+  windows:
+    labels: [self-hosted, windows]
     libvirt:
       path: /var/lib/libvirt/images/ci-runners/windows-builder.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'

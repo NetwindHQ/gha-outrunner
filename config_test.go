@@ -7,21 +7,16 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	// TODO: test valid config parsing
-	// TODO: test missing label error
-	// TODO: test missing provider error
-	// TODO: test default values for libvirt/tart
-}
-
-func TestLoadConfigFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `images:
-  - label: linux
+	content := `runners:
+  linux:
+    labels: [self-hosted, linux]
     docker:
       image: runner:latest
-  - label: windows
+  windows:
+    labels: [self-hosted, windows]
     libvirt:
       path: /tmp/win.qcow2
 `
@@ -34,89 +29,135 @@ func TestLoadConfigFile(t *testing.T) {
 		t.Fatalf("LoadConfig: %v", err)
 	}
 
-	if len(cfg.Images) != 2 {
-		t.Fatalf("expected 2 images, got %d", len(cfg.Images))
+	if len(cfg.Runners) != 2 {
+		t.Fatalf("expected 2 runners, got %d", len(cfg.Runners))
 	}
-	if cfg.Images[0].Label != "linux" {
-		t.Errorf("expected label linux, got %s", cfg.Images[0].Label)
+
+	linux, ok := cfg.Runners["linux"]
+	if !ok {
+		t.Fatal("expected linux runner")
 	}
-	if cfg.Images[0].Docker == nil {
+	if linux.Docker == nil {
 		t.Error("expected docker config")
 	}
-	if cfg.Images[1].Libvirt == nil {
+	if len(linux.Labels) != 2 {
+		t.Errorf("expected 2 labels, got %d", len(linux.Labels))
+	}
+
+	windows, ok := cfg.Runners["windows"]
+	if !ok {
+		t.Fatal("expected windows runner")
+	}
+	if windows.Libvirt == nil {
 		t.Error("expected libvirt config")
 	}
 	// Check defaults applied
-	if cfg.Images[1].Libvirt.CPUs != 4 {
-		t.Errorf("expected default CPUs 4, got %d", cfg.Images[1].Libvirt.CPUs)
+	if windows.Libvirt.CPUs != 4 {
+		t.Errorf("expected default CPUs 4, got %d", windows.Libvirt.CPUs)
 	}
-	if cfg.Images[1].Libvirt.MemoryMB != 8192 {
-		t.Errorf("expected default memory 8192, got %d", cfg.Images[1].Libvirt.MemoryMB)
+	if windows.Libvirt.MemoryMB != 8192 {
+		t.Errorf("expected default memory 8192, got %d", windows.Libvirt.MemoryMB)
 	}
 }
 
-func TestMatchImage(t *testing.T) {
-	cfg := &Config{
-		Images: []ImageConfig{
-			{Label: "linux", Docker: &DockerImage{Image: "runner:latest"}},
-			{Label: "windows", Libvirt: &LibvirtImage{Path: "/tmp/win.qcow2"}},
-		},
+func TestLoadConfigMissingLabels(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  linux:
+    docker:
+      image: runner:latest
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 
-	// Match by label
-	img, err := cfg.MatchImage([]string{"windows"})
-	if err != nil {
-		t.Fatalf("MatchImage: %v", err)
-	}
-	if img.Label != "windows" {
-		t.Errorf("expected windows, got %s", img.Label)
-	}
-
-	// Empty labels → first image
-	img, err = cfg.MatchImage(nil)
-	if err != nil {
-		t.Fatalf("MatchImage(nil): %v", err)
-	}
-	if img.Label != "linux" {
-		t.Errorf("expected linux fallback, got %s", img.Label)
-	}
-
-	// No match
-	_, err = cfg.MatchImage([]string{"nonexistent"})
+	_, err := LoadConfig(path)
 	if err == nil {
-		t.Error("expected error for no match")
+		t.Fatal("expected error for missing labels")
 	}
 }
 
-func TestAllLabels(t *testing.T) {
-	cfg := &Config{
-		Images: []ImageConfig{
-			{Label: "linux"},
-			{Label: "windows"},
-			{Label: "macos"},
-		},
+func TestLoadConfigMissingProvider(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  linux:
+    labels: [linux]
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 
-	labels := cfg.AllLabels()
-	if len(labels) != 3 {
-		t.Fatalf("expected 3 labels, got %d", len(labels))
+	_, err := LoadConfig(path)
+	if err == nil {
+		t.Fatal("expected error for missing provider")
 	}
 }
 
-func TestNeedsBackend(t *testing.T) {
-	cfg := &Config{
-		Images: []ImageConfig{
-			{Label: "linux", Docker: &DockerImage{Image: "runner:latest"}},
-		},
+func TestLoadConfigNoRunners(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners: {}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 
-	if !cfg.NeedsDocker() {
-		t.Error("expected NeedsDocker=true")
+	_, err := LoadConfig(path)
+	if err == nil {
+		t.Fatal("expected error for empty runners")
 	}
-	if cfg.NeedsLibvirt() {
-		t.Error("expected NeedsLibvirt=false")
+}
+
+func TestLoadConfigDefaults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  tart-runner:
+    labels: [macos]
+    tart:
+      image: base:latest
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if cfg.NeedsTart() {
-		t.Error("expected NeedsTart=false")
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	runner := cfg.Runners["tart-runner"]
+	if runner.Tart.CPUs != 4 {
+		t.Errorf("expected default CPUs 4, got %d", runner.Tart.CPUs)
+	}
+	if runner.Tart.MemoryMB != 8192 {
+		t.Errorf("expected default memory 8192, got %d", runner.Tart.MemoryMB)
+	}
+}
+
+func TestProviderType(t *testing.T) {
+	tests := []struct {
+		name   string
+		runner RunnerConfig
+		want   string
+	}{
+		{"docker", RunnerConfig{Docker: &DockerImage{Image: "x"}}, "docker"},
+		{"libvirt", RunnerConfig{Libvirt: &LibvirtImage{Path: "x"}}, "libvirt"},
+		{"tart", RunnerConfig{Tart: &TartImage{Image: "x"}}, "tart"},
+		{"empty", RunnerConfig{}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.runner.ProviderType()
+			if got != tt.want {
+				t.Errorf("ProviderType() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

@@ -17,20 +17,24 @@ type Scaler struct {
 	client      *scaleset.Client
 	scaleSetID  int
 	maxRunners  int
+	namePrefix  string
+	runner      *RunnerConfig
 	provisioner Provisioner
 
 	mu      sync.Mutex
-	runners map[string]struct{} // name -> exists
+	runners map[string]struct{}
 }
 
 var _ listener.Scaler = (*Scaler)(nil)
 
-func NewScaler(logger *slog.Logger, client *scaleset.Client, scaleSetID, maxRunners int, prov Provisioner) *Scaler {
+func NewScaler(logger *slog.Logger, client *scaleset.Client, scaleSetID, maxRunners int, namePrefix string, runner *RunnerConfig, prov Provisioner) *Scaler {
 	return &Scaler{
 		logger:      logger,
 		client:      client,
 		scaleSetID:  scaleSetID,
 		maxRunners:  maxRunners,
+		namePrefix:  namePrefix,
+		runner:      runner,
 		provisioner: prov,
 		runners:     make(map[string]struct{}),
 	}
@@ -50,7 +54,7 @@ func (s *Scaler) HandleDesiredRunnerCount(ctx context.Context, count int) (int, 
 	)
 
 	for range target - current {
-		name := fmt.Sprintf("outrunner-%s", uuid.NewString()[:8])
+		name := fmt.Sprintf("%s-%s", s.namePrefix, uuid.NewString()[:8])
 
 		jit, err := s.client.GenerateJitRunnerConfig(ctx,
 			&scaleset.RunnerScaleSetJitRunnerSetting{Name: name},
@@ -63,6 +67,7 @@ func (s *Scaler) HandleDesiredRunnerCount(ctx context.Context, count int) (int, 
 		req := &RunnerRequest{
 			Name:      name,
 			JITConfig: jit.EncodedJITConfig,
+			Runner:    s.runner,
 		}
 
 		s.logger.Info("Starting runner", slog.String("name", name))

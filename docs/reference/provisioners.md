@@ -11,8 +11,8 @@ Creates a container per job. Fastest startup time.
 ### Lifecycle
 
 1. **Image check:** Inspects the image locally. Pulls from registry only if not found.
-2. **Create container:** Named after the runner (e.g., `outrunner-a1b2c3d4`). Labels: `outrunner=true`, `outrunner.name=<name>`. Configured with `AutoRemove: true`.
-3. **Start container:** Runs `./run.sh --jitconfig <config>`.
+2. **Create container:** Named using the scale set name as prefix (e.g., `linux-a1b2c3d4`). Labels: `outrunner=true`, `outrunner.name=<name>`. Configured with `AutoRemove: true`.
+3. **Start container:** Runs the configured `runner_cmd` (default: `./run.sh`) with `--jitconfig <config>`.
 4. **Stop:** Sends stop signal. Container may already be gone due to AutoRemove.
 
 ### Docker Host Detection
@@ -80,7 +80,7 @@ Ephemeral overlay files are created in the system temp directory by default. Con
 
 ### Cleanup
 
-On startup, outrunner lists all domains and destroys any whose name starts with the scale set name prefix (e.g., `outrunner-`). Corresponding overlay files are also deleted.
+On startup, outrunner lists all domains and destroys any whose name starts with the runner's scale set name prefix. Corresponding overlay files are also deleted.
 
 ---
 
@@ -117,4 +117,4 @@ The `image` field can be:
 
 ### Cleanup
 
-On startup, outrunner runs `tart list --quiet` and deletes any VMs whose name starts with the scale set name prefix (via `tart stop` + `tart delete`).
+On startup, outrunner runs `tart list --quiet` and deletes any VMs whose name starts with the runner's scale set name prefix (via `tart stop` + `tart delete`).

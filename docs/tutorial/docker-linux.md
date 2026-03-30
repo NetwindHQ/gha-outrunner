@@ -50,13 +50,14 @@ Copy the token. You'll need it in the next step.
 Create `outrunner.yml`:
 
 ```yaml
-images:
-  - label: linux
+runners:
+  linux:
+    labels: [self-hosted, linux]
     docker:
       image: outrunner-runner:latest
 ```
 
-This tells outrunner: when a job requests `runs-on: linux`, provision a container from the `outrunner-runner:latest` image.
+This tells outrunner: create a scale set named "linux" with the labels `self-hosted` and `linux`, and provision Docker containers from the `outrunner-runner:latest` image for jobs that match.
 
 ## 5. Start outrunner
 
@@ -70,11 +71,11 @@ This tells outrunner: when a job requests `runs-on: linux`, provision a containe
 You should see output like:
 
 ```
-level=INFO msg="Loaded config" images=1
-level=INFO msg="Scale set not found, creating" name=outrunner
+level=INFO msg="Loaded config" runners=1
+level=INFO msg="Scale set not found, creating" name=linux
 level=INFO msg="Scale set created" id=3
 level=INFO msg="Docker provisioner initialized"
-level=INFO msg="Listening for jobs" scaleSet=outrunner maxRunners=2
+level=INFO msg="Listening for jobs" scaleSet=linux maxRunners=2
 ```
 
 outrunner is now listening for jobs. Leave it running.
@@ -91,7 +92,7 @@ on:
 
 jobs:
   hello:
-    runs-on: linux
+    runs-on: [self-hosted, linux]
     steps:
       - run: echo "Hello from an ephemeral container!"
       - run: hostname
@@ -107,11 +108,11 @@ Go to your repository on GitHub → Actions → "Test Outrunner" → "Run workfl
 Back in the outrunner terminal, you should see:
 
 ```
-level=INFO msg="Starting runner" scaler.name=outrunner-a1b2c3d4
-level=INFO msg="Container started" docker.name=outrunner-a1b2c3d4 docker.image=outrunner-runner:latest docker.id=e3f4a5b6c7d8
-level=INFO msg="Job started" scaler.runnerName=outrunner-a1b2c3d4
-level=INFO msg="Job completed" scaler.runnerName=outrunner-a1b2c3d4 scaler.result=succeeded
-level=INFO msg="Stopping runner" scaler.name=outrunner-a1b2c3d4
+level=INFO msg="Starting runner" scaler.name=linux-a1b2c3d4
+level=INFO msg="Container started" docker.name=linux-a1b2c3d4 docker.image=outrunner-runner:latest docker.id=e3f4a5b6c7d8
+level=INFO msg="Job started" scaler.runnerName=linux-a1b2c3d4
+level=INFO msg="Job completed" scaler.runnerName=linux-a1b2c3d4 scaler.result=succeeded
+level=INFO msg="Stopping runner" scaler.name=linux-a1b2c3d4
 ```
 
 The workflow run on GitHub should show a green checkmark.
@@ -129,8 +130,8 @@ The scale set is removed from GitHub, and any running containers are stopped.
 
 ## What Happened
 
-1. outrunner registered a scale set with GitHub, declaring it handles the `linux` label.
-2. When you triggered the workflow, GitHub notified outrunner that a runner was needed.
+1. outrunner created a scale set named "linux" with the labels `self-hosted` and `linux`.
+2. When you triggered the workflow, GitHub matched the `runs-on: [self-hosted, linux]` labels to this scale set and notified outrunner that a runner was needed.
 3. outrunner created a Docker container from `outrunner-runner:latest` with a JIT registration token.
 4. The runner inside the container registered with GitHub, picked up the job, ran it, and exited.
 5. outrunner detected the job completion and stopped the container (which auto-removed itself).

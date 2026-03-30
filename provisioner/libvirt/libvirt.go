@@ -62,10 +62,10 @@ func New(logger *slog.Logger, cfg Config) (*Provisioner, error) {
 }
 
 func (p *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) error {
-	if req.Image == nil || req.Image.Libvirt == nil {
-		return fmt.Errorf("no libvirt image config for runner %s", req.Name)
+	if req.Runner == nil || req.Runner.Libvirt == nil {
+		return fmt.Errorf("no libvirt config for runner %s", req.Name)
 	}
-	img := req.Image.Libvirt
+	img := req.Runner.Libvirt
 
 	// Use configured overlay dir, or system temp
 	overlayDir := p.overlayDir

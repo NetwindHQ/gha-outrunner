@@ -3,14 +3,14 @@ name: Test Outrunner
 on:
   workflow_dispatch:
     inputs:
-      label:
-        description: "runs-on label"
+      labels:
+        description: "runs-on labels (JSON array)"
         required: true
-        default: "linux-arm64"
+        default: '["self-hosted", "linux", "arm64"]'
 
 jobs:
   smoke:
-    runs-on: ${{ inputs.label }}
+    runs-on: ${{ fromJSON(inputs.labels) }}
     steps:
       - run: echo "Hello from outrunner!"
       - run: uname -a

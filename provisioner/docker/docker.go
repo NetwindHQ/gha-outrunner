@@ -65,10 +65,16 @@ func dockerHostFromContext() string {
 }
 
 func (d *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) error {
-	if req.Image == nil || req.Image.Docker == nil {
-		return fmt.Errorf("no docker image config for runner %s", req.Name)
+	if req.Runner == nil || req.Runner.Docker == nil {
+		return fmt.Errorf("no docker config for runner %s", req.Name)
 	}
-	img := req.Image.Docker.Image
+	dcfg := req.Runner.Docker
+	img := dcfg.Image
+
+	runnerCmd := dcfg.RunnerCmd
+	if runnerCmd == "" {
+		runnerCmd = "./run.sh"
+	}
 
 	// Pull image only if not available locally
 	_, err := d.client.ImageInspect(ctx, img)
@@ -85,7 +91,7 @@ func (d *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) e
 	resp, err := d.client.ContainerCreate(ctx,
 		&container.Config{
 			Image: img,
-			Cmd:   []string{"./run.sh", "--jitconfig", req.JITConfig},
+			Cmd:   []string{runnerCmd, "--jitconfig", req.JITConfig},
 			Labels: map[string]string{
 				"outrunner":      "true",
 				"outrunner.name": req.Name,

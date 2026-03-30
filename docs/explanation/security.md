@@ -77,8 +77,8 @@ By default, Docker containers share the host's Docker network and can reach each
 If outrunner is killed without graceful shutdown:
 
 - **Docker:** Containers with `AutoRemove: true` will self-destruct when their runner process exits naturally (job timeout or GitHub cancellation). Otherwise, orphaned containers persist until manually removed.
-- **Libvirt:** VMs and overlay files persist. On next startup, outrunner cleans up domains and overlays matching the scale set name prefix.
-- **Tart:** VM clones persist. On next startup, outrunner cleans up VMs matching the scale set name prefix.
+- **Libvirt:** VMs and overlay files persist. On next startup, outrunner cleans up domains and overlays matching each runner's scale set name prefix.
+- **Tart:** VM clones persist. On next startup, outrunner cleans up VMs matching each runner's scale set name prefix.
 
 The scale set registration also persists on GitHub's side. outrunner reuses it on next startup via get-or-create logic.
 

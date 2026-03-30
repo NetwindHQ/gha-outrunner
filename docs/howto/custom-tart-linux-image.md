@@ -66,8 +66,9 @@ sudo shutdown -h now
 ## 4. Use in Config
 
 ```yaml
-images:
-  - label: linux-arm64
+runners:
+  linux-arm64:
+    labels: [self-hosted, linux, arm64]
     tart:
       image: my-linux-runner
       runner_cmd: /home/admin/actions-runner/run.sh
@@ -92,8 +93,9 @@ tart push my-linux-runner ghcr.io/your-org/linux-runner-arm64:latest
 ```
 
 ```yaml
-images:
-  - label: linux-arm64
+runners:
+  linux-arm64:
+    labels: [self-hosted, linux, arm64]
     tart:
       image: ghcr.io/your-org/linux-runner-arm64:latest
 ```

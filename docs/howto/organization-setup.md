@@ -20,11 +20,10 @@ Use the organization URL instead of a repository URL:
 ./outrunner \
   --url https://github.com/your-org \
   --token ghp_xxx \
-  --config outrunner.yml \
-  --name org-runners
+  --config outrunner.yml
 ```
 
-The scale set is registered at the organization level. Any repository in the organization can use its labels in `runs-on`.
+The scale sets are registered at the organization level. Any repository in the organization can use their labels in `runs-on`.
 
 ## Workflow Usage
 
@@ -33,22 +32,24 @@ Workflows in any repo in the org can target the runner:
 ```yaml
 jobs:
   build:
-    runs-on: linux
+    runs-on: [self-hosted, linux]
 ```
 
 No per-repo configuration is needed.
 
 ## Multiple Organizations or Repos
 
-Run separate outrunner instances with different `--name` values:
+Run separate outrunner instances with different config files:
 
 ```bash
 # Org-wide runners
-./outrunner --name org-pool --url https://github.com/your-org ...
+./outrunner --url https://github.com/your-org --config org.yml ...
 
 # Extra runners for a specific repo with heavy CI
-./outrunner --name heavy-ci --url https://github.com/your-org/big-repo ...
+./outrunner --url https://github.com/your-org/big-repo --config repo.yml ...
 ```
+
+Use different runner names (config map keys) across instances to avoid scale set name collisions.
 
 ## Security Considerations
 

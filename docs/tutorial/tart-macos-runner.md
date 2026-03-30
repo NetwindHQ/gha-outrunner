@@ -81,8 +81,9 @@ Copy the token.
 Create `outrunner.yml`:
 
 ```yaml
-images:
-  - label: macos
+runners:
+  macos:
+    labels: [self-hosted, macos]
     tart:
       image: macos-runner
       runner_cmd: /Users/admin/actions-runner/run.sh
@@ -104,10 +105,10 @@ Note: The default user in Cirrus Labs images is `admin`, so the runner path is `
 You should see:
 
 ```
-level=INFO msg="Loaded config" images=1
+level=INFO msg="Loaded config" runners=1
 level=INFO msg="Scale set created" id=6
 level=INFO msg="Tart provisioner initialized"
-level=INFO msg="Listening for jobs" scaleSet=outrunner maxRunners=2
+level=INFO msg="Listening for jobs" scaleSet=macos maxRunners=2
 ```
 
 ## 8. Create a Test Workflow
@@ -122,7 +123,7 @@ on:
 
 jobs:
   hello:
-    runs-on: macos
+    runs-on: [self-hosted, macos]
     steps:
       - run: echo "Hello from a macOS VM!"
       - run: sw_vers
@@ -136,11 +137,11 @@ Push this file and trigger it from GitHub → Actions → "Test Outrunner" → "
 In the outrunner terminal:
 
 ```
-level=DEBUG msg="Cloning VM" tart.image=macos-runner tart.name=outrunner-a1b2c3d4
-level=DEBUG msg="Waiting for guest agent" tart.name=outrunner-a1b2c3d4
-level=INFO  msg="Starting runner in VM" tart.name=outrunner-a1b2c3d4
-level=INFO  msg="Job completed" scaler.runnerName=outrunner-a1b2c3d4 scaler.result=succeeded
-level=DEBUG msg="Stopping VM" tart.name=outrunner-a1b2c3d4
+level=DEBUG msg="Cloning VM" tart.image=macos-runner tart.name=macos-a1b2c3d4
+level=DEBUG msg="Waiting for guest agent" tart.name=macos-a1b2c3d4
+level=INFO  msg="Starting runner in VM" tart.name=macos-a1b2c3d4
+level=INFO  msg="Job completed" scaler.runnerName=macos-a1b2c3d4 scaler.result=succeeded
+level=DEBUG msg="Stopping VM" tart.name=macos-a1b2c3d4
 ```
 
 The `sw_vers` step will show macOS Sequoia, confirming it ran inside a real macOS VM.

@@ -14,7 +14,7 @@ The runner registers itself using a JIT (just-in-time) configuration token passe
 
 ## Docker
 
-The container must have the runner at its working directory so that `./run.sh --jitconfig <config>` works.
+The container must have the runner at its working directory so that the `runner_cmd` (default: `./run.sh`) can be executed with `--jitconfig <config>`.
 
 The simplest approach is to base your image on the official runner image:
 

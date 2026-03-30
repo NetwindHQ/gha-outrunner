@@ -83,8 +83,9 @@ sudo shutdown -h now
 ## 5. Use in Config
 
 ```yaml
-images:
-  - label: macos
+runners:
+  macos:
+    labels: [self-hosted, macos]
     tart:
       image: my-runner-base
       runner_cmd: /Users/admin/actions-runner/run.sh
@@ -115,8 +116,9 @@ tart push my-runner-base ghcr.io/your-org/macos-runner:latest
 Then reference it in config by the registry URL:
 
 ```yaml
-images:
-  - label: macos
+runners:
+  macos:
+    labels: [self-hosted, macos]
     tart:
       image: ghcr.io/your-org/macos-runner:latest
 ```

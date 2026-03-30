@@ -1,25 +1,28 @@
 # How to Run Multiple Backends Together
 
-A single outrunner instance can serve Docker containers, libvirt VMs, and Tart VMs simultaneously. Jobs are routed to the right backend based on their `runs-on` label.
+A single outrunner instance can serve Docker containers, libvirt VMs, and Tart VMs simultaneously. Each runner in the config gets its own scale set, and GitHub routes jobs to the correct one based on labels.
 
 ## Configuration
 
-List all images in one config file. Each image declares its label and backend:
+Define all runners in one config file. Each runner declares its labels and backend:
 
 ```yaml
-images:
-  - label: linux
+runners:
+  linux:
+    labels: [self-hosted, linux]
     docker:
       image: outrunner-runner:latest
 
-  - label: windows
+  windows:
+    labels: [self-hosted, windows]
     libvirt:
       path: /var/lib/libvirt/images/windows-builder.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'
       cpus: 4
       memory: 8192
 
-  - label: macos
+  macos:
+    labels: [self-hosted, macos]
     tart:
       image: ghcr.io/cirruslabs/macos-sequoia-base:latest
       runner_cmd: /Users/admin/actions-runner/run.sh
@@ -27,7 +30,7 @@ images:
       memory: 8192
 ```
 
-outrunner initializes only the backends that are needed. If no image uses Docker, the Docker client is never created.
+outrunner initializes only the backends that are needed. If no runner uses Docker, the Docker client is never created.
 
 ## Start outrunner
 
@@ -39,63 +42,74 @@ outrunner initializes only the backends that are needed. If no image uses Docker
   --max-runners 4
 ```
 
-The `--max-runners` limit applies globally across all backends.
+The `--max-runners` value is the default per-runner limit. Individual runners can override it with `max_runners` in the config.
 
 ## Workflow Usage
 
 ```yaml
 jobs:
   build-linux:
-    runs-on: linux
+    runs-on: [self-hosted, linux]
     steps:
       - run: echo "Docker container"
 
   build-windows:
-    runs-on: windows
+    runs-on: [self-hosted, windows]
     steps:
       - run: echo "KVM virtual machine"
 
   build-macos:
-    runs-on: macos
+    runs-on: [self-hosted, macos]
     steps:
       - run: echo "Tart virtual machine"
 ```
 
-## Multiple Images on the Same Backend
+## Multiple Runners on the Same Backend
 
-You can define multiple images for the same backend with different labels:
+You can define multiple runners for the same backend with different labels:
 
 ```yaml
-images:
-  - label: linux-small
+runners:
+  linux-small:
+    labels: [self-hosted, linux, small]
     docker:
       image: runner:latest
 
-  - label: linux-gpu
+  linux-gpu:
+    labels: [self-hosted, linux, gpu]
     docker:
       image: runner-with-cuda:latest
 
-  - label: windows-2022
+  windows-2022:
+    labels: [self-hosted, windows, win2022]
     libvirt:
       path: /images/win2022.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'
 
-  - label: windows-2025
+  windows-2025:
+    labels: [self-hosted, windows, win2025]
     libvirt:
       path: /images/win2025.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'
 ```
 
-## Independent Scaling
+## Per-Runner Concurrency
 
-If you need different `--max-runners` per backend, run separate outrunner instances with non-overlapping labels:
+Each runner can have its own `max_runners` limit. This is useful when backends have different resource costs:
 
-```bash
-# Terminal 1: Docker (high concurrency)
-./outrunner --name docker-pool --config docker.yml --max-runners 8 ...
+```yaml
+runners:
+  linux:
+    labels: [self-hosted, linux]
+    max_runners: 8
+    docker:
+      image: runner:latest
 
-# Terminal 2: VMs (limited concurrency)
-./outrunner --name vm-pool --config vms.yml --max-runners 2 ...
+  macos:
+    labels: [self-hosted, macos]
+    max_runners: 2
+    tart:
+      image: macos-runner
 ```
 
 ## Platform Constraints

@@ -1,7 +1,9 @@
 # Windows VM via libvirt/QEMU.
 # Requires: libvirtd running, qcow2 golden image with QEMU Guest Agent.
-images:
-  - label: windows
+runners:
+  windows:
+    labels: [self-hosted, windows, x64]
+    max_runners: 1
     libvirt:
       path: /var/lib/libvirt/images/ci-runners/windows-builder.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'

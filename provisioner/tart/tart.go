@@ -29,10 +29,10 @@ func New(logger *slog.Logger) *Provisioner {
 }
 
 func (t *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) error {
-	if req.Image == nil || req.Image.Tart == nil {
-		return fmt.Errorf("no tart image config for runner %s", req.Name)
+	if req.Runner == nil || req.Runner.Tart == nil {
+		return fmt.Errorf("no tart config for runner %s", req.Name)
 	}
-	img := req.Image.Tart
+	img := req.Runner.Tart
 
 	// 1. Clone from base image
 	t.logger.Debug("Cloning VM", slog.String("image", img.Image), slog.String("name", req.Name))

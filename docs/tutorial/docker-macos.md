@@ -60,8 +60,9 @@ Copy the token.
 Create `outrunner.yml`:
 
 ```yaml
-images:
-  - label: linux
+runners:
+  linux:
+    labels: [self-hosted, linux]
     docker:
       image: outrunner-runner:latest
 ```
@@ -79,10 +80,10 @@ You should see:
 
 ```
 level=INFO msg="Auto-detected Docker host" docker.host=unix:///Users/you/.colima/default/docker.sock
-level=INFO msg="Loaded config" images=1
+level=INFO msg="Loaded config" runners=1
 level=INFO msg="Scale set created" id=3
 level=INFO msg="Docker provisioner initialized"
-level=INFO msg="Listening for jobs" scaleSet=outrunner maxRunners=2
+level=INFO msg="Listening for jobs" scaleSet=linux maxRunners=2
 ```
 
 Notice outrunner auto-detected the Colima Docker socket. This works with Docker Desktop too.
@@ -99,7 +100,7 @@ on:
 
 jobs:
   hello:
-    runs-on: linux
+    runs-on: [self-hosted, linux]
     steps:
       - run: echo "Hello from an ephemeral container!"
       - run: uname -a
@@ -112,9 +113,9 @@ Push this file and trigger it from GitHub → Actions → "Test Outrunner" → "
 In the outrunner terminal:
 
 ```
-level=INFO msg="Starting runner" scaler.name=outrunner-a1b2c3d4
-level=INFO msg="Container started" docker.name=outrunner-a1b2c3d4 docker.image=outrunner-runner:latest
-level=INFO msg="Job completed" scaler.runnerName=outrunner-a1b2c3d4 scaler.result=succeeded
+level=INFO msg="Starting runner" scaler.name=linux-a1b2c3d4
+level=INFO msg="Container started" docker.name=linux-a1b2c3d4 docker.image=outrunner-runner:latest
+level=INFO msg="Job completed" scaler.runnerName=linux-a1b2c3d4 scaler.result=succeeded
 ```
 
 The workflow on GitHub should show a green checkmark.

@@ -9,21 +9,24 @@ import (
 
 // Config is the outrunner configuration file format.
 type Config struct {
-	Images []ImageConfig `yaml:"images"`
+	Runners map[string]RunnerConfig `yaml:"runners"`
 }
 
-// ImageConfig defines a runner environment and the label it satisfies.
+// RunnerConfig defines a runner environment and the scale set it registers.
+// The map key in Config.Runners is used as the scale set name.
 // Exactly one of Docker, Libvirt, or Tart must be set.
-type ImageConfig struct {
-	Label   string        `yaml:"label"`
-	Docker  *DockerImage  `yaml:"docker,omitempty"`
-	Libvirt *LibvirtImage `yaml:"libvirt,omitempty"`
-	Tart    *TartImage    `yaml:"tart,omitempty"`
+type RunnerConfig struct {
+	Labels     []string      `yaml:"labels"`
+	MaxRunners int           `yaml:"max_runners,omitempty"`
+	Docker     *DockerImage  `yaml:"docker,omitempty"`
+	Libvirt    *LibvirtImage `yaml:"libvirt,omitempty"`
+	Tart       *TartImage    `yaml:"tart,omitempty"`
 }
 
 // DockerImage configures a Docker-based runner.
 type DockerImage struct {
-	Image string `yaml:"image"`
+	Image     string `yaml:"image"`
+	RunnerCmd string `yaml:"runner_cmd"`
 }
 
 // LibvirtImage configures a libvirt/QEMU-based runner.
@@ -42,14 +45,14 @@ type TartImage struct {
 	MemoryMB  int    `yaml:"memory"`
 }
 
-// ProviderType returns which provisioner backend this image uses.
-func (img *ImageConfig) ProviderType() string {
+// ProviderType returns which provisioner backend this runner uses.
+func (r *RunnerConfig) ProviderType() string {
 	switch {
-	case img.Docker != nil:
+	case r.Docker != nil:
 		return "docker"
-	case img.Libvirt != nil:
+	case r.Libvirt != nil:
 		return "libvirt"
-	case img.Tart != nil:
+	case r.Tart != nil:
 		return "tart"
 	default:
 		return ""
@@ -68,101 +71,40 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	for i := range cfg.Images {
-		img := &cfg.Images[i]
+	if len(cfg.Runners) == 0 {
+		return nil, fmt.Errorf("no runners configured")
+	}
 
-		if img.Label == "" {
-			return nil, fmt.Errorf("image %d: label is required", i)
+	for name, runner := range cfg.Runners {
+		if len(runner.Labels) == 0 {
+			return nil, fmt.Errorf("runner %q: labels are required", name)
 		}
-		if img.ProviderType() == "" {
-			return nil, fmt.Errorf("image %q: must specify docker, libvirt, or tart", img.Label)
-		}
-
-		// Apply defaults for libvirt images
-		if img.Libvirt != nil {
-			if img.Libvirt.CPUs == 0 {
-				img.Libvirt.CPUs = 4
-			}
-			if img.Libvirt.MemoryMB == 0 {
-				img.Libvirt.MemoryMB = 8192
-			}
+		if runner.ProviderType() == "" {
+			return nil, fmt.Errorf("runner %q: must specify docker, libvirt, or tart", name)
 		}
 
-		// Apply defaults for tart images
-		if img.Tart != nil {
-			if img.Tart.CPUs == 0 {
-				img.Tart.CPUs = 4
+		// Apply defaults for libvirt runners
+		if runner.Libvirt != nil {
+			if runner.Libvirt.CPUs == 0 {
+				runner.Libvirt.CPUs = 4
 			}
-			if img.Tart.MemoryMB == 0 {
-				img.Tart.MemoryMB = 8192
+			if runner.Libvirt.MemoryMB == 0 {
+				runner.Libvirt.MemoryMB = 8192
 			}
 		}
+
+		// Apply defaults for tart runners
+		if runner.Tart != nil {
+			if runner.Tart.CPUs == 0 {
+				runner.Tart.CPUs = 4
+			}
+			if runner.Tart.MemoryMB == 0 {
+				runner.Tart.MemoryMB = 8192
+			}
+		}
+
+		cfg.Runners[name] = runner
 	}
 
 	return &cfg, nil
-}
-
-// MatchImage finds the image for a job based on its labels.
-// If labels are empty (scaleset API doesn't expose them yet — see #20),
-// falls back to the first image.
-func (c *Config) MatchImage(jobLabels []string) (*ImageConfig, error) {
-	if len(c.Images) == 0 {
-		return nil, fmt.Errorf("no images configured")
-	}
-
-	if len(jobLabels) == 0 {
-		return &c.Images[0], nil
-	}
-
-	jobSet := make(map[string]bool, len(jobLabels))
-	for _, l := range jobLabels {
-		jobSet[l] = true
-	}
-
-	for i := range c.Images {
-		if jobSet[c.Images[i].Label] {
-			return &c.Images[i], nil
-		}
-	}
-
-	return nil, fmt.Errorf("no image matches labels %v", jobLabels)
-}
-
-// AllLabels returns all unique image labels (for scale set registration).
-func (c *Config) AllLabels() []string {
-	var labels []string
-	for _, img := range c.Images {
-		labels = append(labels, img.Label)
-	}
-	return labels
-}
-
-// NeedsDocker returns true if any image uses the Docker backend.
-func (c *Config) NeedsDocker() bool {
-	for _, img := range c.Images {
-		if img.Docker != nil {
-			return true
-		}
-	}
-	return false
-}
-
-// NeedsLibvirt returns true if any image uses the libvirt backend.
-func (c *Config) NeedsLibvirt() bool {
-	for _, img := range c.Images {
-		if img.Libvirt != nil {
-			return true
-		}
-	}
-	return false
-}
-
-// NeedsTart returns true if any image uses the Tart backend.
-func (c *Config) NeedsTart() bool {
-	for _, img := range c.Images {
-		if img.Tart != nil {
-			return true
-		}
-	}
-	return false
 }

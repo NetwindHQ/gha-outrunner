@@ -11,12 +11,8 @@ type RunnerRequest struct {
 	// Pass to: ./run.sh --jitconfig <JITConfig>
 	JITConfig string
 
-	// Labels from the workflow's runs-on field (e.g., ["self-hosted", "linux", "docker"]).
-	Labels []string
-
-	// Image is the matched image configuration. Set by MultiProvisioner
-	// before calling the backend's Start method.
-	Image *ImageConfig
+	// Runner is the matched runner configuration.
+	Runner *RunnerConfig
 }
 
 // Provisioner creates and destroys ephemeral runner environments.

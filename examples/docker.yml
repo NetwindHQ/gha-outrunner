@@ -1,6 +1,7 @@
 # Docker-only configuration.
 # Build the runner image: docker build -t outrunner-runner runner/
-images:
-  - label: linux
+runners:
+  linux:
+    labels: [self-hosted, linux]
     docker:
       image: outrunner-runner:latest

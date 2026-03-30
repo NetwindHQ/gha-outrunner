@@ -31,8 +31,7 @@ go build -o outrunner ./cmd/outrunner
 ./outrunner \
   --url https://github.com/your/repo \
   --token ghp_xxx \
-  --config outrunner.yml \
-  --max-runners 2
+  --config outrunner.yml
 ```
 
 See the [tutorials](#tutorials) for step-by-step setup guides for each backend.
