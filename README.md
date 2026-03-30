@@ -21,14 +21,43 @@ outrunner provisions fresh Docker containers or VMs for each GitHub Actions job,
 | libvirt | Linux | Windows, Linux | KVM VM from qcow2 golden image with CoW overlays. QEMU Guest Agent for command execution. |
 | Tart | macOS (Apple Silicon) | macOS, Linux (ARM64) | VM clone per job. Tart guest agent for command execution. |
 
-## Quick Start
+## Install
 
-Build and run:
+### macOS (Homebrew)
 
 ```bash
-go build -o outrunner ./cmd/outrunner
+brew tap NetwindHQ/tap
+brew install outrunner
+```
 
-./outrunner \
+### Ubuntu / Debian
+
+```bash
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
+sudo dpkg -i outrunner_amd64.deb
+```
+
+### CentOS / RHEL
+
+```bash
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.rpm
+sudo rpm -i outrunner_amd64.rpm
+```
+
+### From source
+
+```bash
+go install github.com/NetwindHQ/gha-outrunner/cmd/outrunner@latest
+```
+
+### Binary download
+
+Prebuilt binaries for Linux (amd64, arm64) and macOS (arm64) are available on the [Releases](https://github.com/NetwindHQ/gha-outrunner/releases) page.
+
+## Quick Start
+
+```bash
+outrunner \
   --url https://github.com/your/repo \
   --token ghp_xxx \
   --config outrunner.yml

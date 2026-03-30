@@ -101,13 +101,14 @@ virsh undefine windows-setup
 
 The qcow2 file is now your golden image.
 
-## 3. Build outrunner
+## 3. Install outrunner
 
 ```bash
-git clone https://github.com/NetwindHQ/gha-outrunner.git
-cd gha-outrunner
-go build -o outrunner ./cmd/outrunner
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
+sudo dpkg -i outrunner_amd64.deb
 ```
+
+Or from source: `go install github.com/NetwindHQ/gha-outrunner/cmd/outrunner@latest`
 
 ## 4. Create a GitHub PAT
 

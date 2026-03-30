@@ -26,13 +26,14 @@ You should see the image build successfully:
 Successfully tagged outrunner-runner:latest
 ```
 
-## 2. Build outrunner
+## 2. Install outrunner
 
 ```bash
-go build -o outrunner ./cmd/outrunner
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
+sudo dpkg -i outrunner_amd64.deb
 ```
 
-This produces a single `outrunner` binary in the current directory.
+Or from source: `go install github.com/NetwindHQ/gha-outrunner/cmd/outrunner@latest`
 
 ## 3. Create a GitHub PAT
 

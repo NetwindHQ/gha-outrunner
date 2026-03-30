@@ -37,11 +37,11 @@ docker build -t outrunner-runner runner/
 
 Note: On Apple Silicon, this builds a linux/arm64 image. The official `ghcr.io/actions/actions-runner` base image supports both amd64 and arm64.
 
-## 3. Build outrunner
+## 3. Install outrunner
 
 ```bash
-brew install go  # if you don't have Go installed
-go build -o outrunner ./cmd/outrunner
+brew tap NetwindHQ/tap
+brew install outrunner
 ```
 
 ## 4. Create a GitHub PAT

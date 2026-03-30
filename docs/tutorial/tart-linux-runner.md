@@ -40,12 +40,11 @@ tart list
 
 You should see `ubuntu-runner` in the list.
 
-## 3. Build outrunner
+## 3. Install outrunner
 
 ```bash
-git clone https://github.com/NetwindHQ/gha-outrunner.git
-cd gha-outrunner
-go build -o outrunner ./cmd/outrunner
+brew tap NetwindHQ/tap
+brew install outrunner
 ```
 
 ## 4. Create a GitHub PAT

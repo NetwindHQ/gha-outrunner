@@ -1,5 +1,20 @@
 # CLI Reference
 
+## Install
+
+```bash
+# macOS
+brew tap NetwindHQ/tap
+brew install outrunner
+
+# Ubuntu / Debian
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
+sudo dpkg -i outrunner_amd64.deb
+
+# From source
+go install github.com/NetwindHQ/gha-outrunner/cmd/outrunner@latest
+```
+
 ## Usage
 
 ```

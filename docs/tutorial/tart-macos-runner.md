@@ -57,12 +57,11 @@ Shut down the VM from the Apple menu → Shut Down (or run `sudo shutdown -h now
 
 The changes are saved to the `macos-runner` image. This is now your base image with the runner installed.
 
-## 4. Build outrunner
+## 4. Install outrunner
 
 ```bash
-git clone https://github.com/NetwindHQ/gha-outrunner.git
-cd gha-outrunner
-go build -o outrunner ./cmd/outrunner
+brew tap NetwindHQ/tap
+brew install outrunner
 ```
 
 ## 5. Create a GitHub PAT
