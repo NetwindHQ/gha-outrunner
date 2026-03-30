@@ -27,13 +27,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  homebrew:
-    needs: release
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: dawidd6/action-homebrew-bump-formula@v4
-        with:
-          token: ${{ secrets.TAP_GITHUB_TOKEN }}
-          tap: NetwindHQ/homebrew-tap
-          formula: outrunner
-          no_fork: true
+      - name: Update Homebrew formula
+        run: scripts/update-homebrew.sh
+        env:
+          VERSION: ${{ github.ref_name }}
+          CHECKSUMS_FILE: dist/checksums.txt
+          GH_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
