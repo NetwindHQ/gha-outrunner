@@ -68,3 +68,7 @@ All packages and binaries are on the [Releases](https://github.com/NetwindHQ/gha
 - [delo.so](https://delo.so) - Desktop, offline-first CAD for makers. Uses outrunner for CI, build and test pipelines.
 
 Using outrunner? [Open a PR](https://github.com/NetwindHQ/gha-outrunner/edit/main/README.md) to add your project.
+
+## Author
+
+Built by [Paweł Subocz](https://x.com/psubocz) at [Netwind](https://netwind.pl).
