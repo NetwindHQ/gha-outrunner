@@ -17,7 +17,6 @@ fi
 # Set up rpm repository for automatic updates
 # Skip with: OUTRUNNER_NO_REPO=1 rpm -i outrunner_*.rpm
 if [ -z "${OUTRUNNER_NO_REPO:-}" ] && [ ! -f /etc/yum.repos.d/outrunner.repo ]; then
-    rpm --import https://pkg.netwind.pl/NetwindHQ/gha-outrunner/public.key
     cat > /etc/yum.repos.d/outrunner.repo <<EOF
 [outrunner]
 name=outrunner from GitHub via pkg.netwind.pl
