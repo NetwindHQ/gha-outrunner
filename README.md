@@ -15,7 +15,7 @@ outrunner provisions fresh Docker containers or VMs for each GitHub Actions job,
 
 GitHub's [Actions Runner Controller (ARC)](https://github.com/actions/actions-runner-controller) requires Kubernetes. If you're running on bare metal or a simple VPS, you shouldn't need a cluster just to get ephemeral runners. outrunner gives you the same isolation guarantees with Docker, libvirt, or Tart. No additional orchestrator needed.
 
-Read more about the [motivation and design](docs/explanation/why-outrunner.md), [architecture](docs/explanation/architecture.md), and [security model](docs/explanation/security.md).
+Read more about [why outrunner](docs/explanation/why-outrunner.md), the [architecture](docs/explanation/architecture.md), and the [security model](docs/explanation/security.md).
 
 ## Provisioners
 
