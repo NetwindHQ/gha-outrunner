@@ -20,12 +20,21 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install package signing tools
+        run: sudo apt-get install -y rpm devscripts
+
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.GPG_SIGNING_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_SIGNING_KEY }}" > /tmp/gpg-signing-key.asc
+
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
 
       - name: Update Homebrew formula
         run: scripts/update-homebrew.sh

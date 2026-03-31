@@ -47,9 +47,29 @@ nfpms:
     scripts:
       postinstall: scripts/postinstall.sh
       preremove: scripts/preremove.sh
+    deb:
+      signature:
+        key_file: /tmp/gpg-signing-key.asc
+        key_id: "{{ .Env.GPG_FINGERPRINT }}"
+        method: debsign
+    rpm:
+      signature:
+        key_file: /tmp/gpg-signing-key.asc
+        key_id: "{{ .Env.GPG_FINGERPRINT }}"
 
 checksum:
   name_template: "checksums.txt"
+
+signs:
+  - artifacts: checksum
+    args:
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
 
 changelog:
   sort: asc
