@@ -18,7 +18,8 @@ builds:
         goarch: amd64
 
 archives:
-  - formats:
+  - name_template: "outrunner_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
       - tar.gz
 
 nfpms:
