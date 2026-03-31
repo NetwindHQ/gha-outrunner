@@ -52,7 +52,7 @@ Token resolution precedence:
 3. `$CREDENTIALS_DIRECTORY/github-token` (systemd-creds)
 4. `token_file` from config
 
-See the [systemd deployment guide](../howto/systemd-service.md) for details on each method.
+See the [Linux setup guides](../setup/linux-deb.md) for details on each method.
 
 ## Runner Fields
 

@@ -49,8 +49,6 @@ All packages and binaries are on the [Releases](https://github.com/NetwindHQ/gha
 
 ### Deploy to production
 
-- [Deploy as a systemd service](docs/howto/systemd-service.md) (Linux)
-- [Deploy as a launchd service](docs/howto/launchd-service.md) (macOS)
 - [Set up for an organization](docs/howto/organization-setup.md)
 - [Run multiple backends together](docs/howto/mixed-backends.md)
 

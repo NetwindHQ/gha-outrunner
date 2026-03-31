@@ -50,7 +50,7 @@ The GitHub token is resolved in this order:
 3. `$CREDENTIALS_DIRECTORY/github-token` (systemd-creds)
 4. `token_file` in config file
 
-For production deployments, use systemd-creds (encrypted at rest) or an environment file. See the [systemd deployment guide](../howto/systemd-service.md).
+For production deployments, use systemd-creds (encrypted at rest) or an environment file. See the [setup guides](../setup/).
 
 ## Examples
 

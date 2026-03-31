@@ -44,10 +44,35 @@ Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?
 
 ## 3. Set up the token
 
+The simplest option is a token file:
+
 ```bash
 echo -n "ghp_YOUR_TOKEN" | sudo tee /etc/outrunner/token
 sudo chmod 600 /etc/outrunner/token
 sudo chown outrunner:outrunner /etc/outrunner/token
+```
+
+Alternatively, use **systemd-creds** for encryption at rest (systemd v250+, Ubuntu 22.04+, Debian 12+):
+
+```bash
+echo -n "ghp_YOUR_TOKEN" | sudo systemd-creds encrypt --name=github-token - /etc/outrunner/github-token.cred
+sudo chown outrunner:outrunner /etc/outrunner/github-token.cred
+sudo systemctl edit outrunner
+```
+
+Add to the override:
+
+```ini
+[Service]
+LoadCredentialEncrypted=github-token:/etc/outrunner/github-token.cred
+```
+
+Or use an **environment file**:
+
+```bash
+echo 'GITHUB_TOKEN=ghp_YOUR_TOKEN' | sudo tee /etc/outrunner/env
+sudo chmod 600 /etc/outrunner/env
+sudo chown outrunner:outrunner /etc/outrunner/env
 ```
 
 ## 4. Edit the config
