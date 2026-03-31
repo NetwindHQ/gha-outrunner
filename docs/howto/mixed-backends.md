@@ -32,17 +32,7 @@ runners:
 
 outrunner initializes only the backends that are needed. If no runner uses Docker, the Docker client is never created.
 
-## Start outrunner
-
-```bash
-outrunner \
-  --url https://github.com/your/repo \
-  --token ghp_xxx \
-  --config mixed.yml \
-  --max-runners 4
-```
-
-The `--max-runners` value is the default per-runner limit. Individual runners can override it with `max_runners` in the config.
+Restart outrunner to pick up the new config.
 
 ## Workflow Usage
 

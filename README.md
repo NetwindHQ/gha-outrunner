@@ -36,29 +36,27 @@ Install outrunner for your platform:
 - [macOS (Homebrew)](docs/setup/macos.md)
 - [From source](docs/setup/from-source.md)
 
-Each guide gets you to a working Docker runner in minutes. For other backends:
-
-- [Windows VMs via libvirt/KVM](docs/tutorial/libvirt-windows.md) - full VM isolation
-- [macOS VMs via Tart](docs/tutorial/tart-macos.md) - Apple Silicon
-- [Linux ARM64 VMs via Tart](docs/tutorial/tart-linux.md) - ARM64 Linux on Apple Silicon
-- [More on Docker](docs/tutorial/docker.md) - custom images, socket detection, notes
+Each guide gets you to a working Docker runner in minutes.
 
 All packages and binaries are on the [Releases](https://github.com/NetwindHQ/gha-outrunner/releases) page.
 
 ## Going Further
 
-### Deploy to production
+### Other backends
 
-- [Set up for an organization](docs/howto/organization-setup.md)
+- [Windows VMs via libvirt/KVM](docs/tutorial/libvirt-windows.md) - full VM isolation
+- [macOS VMs via Tart](docs/tutorial/tart-macos.md) - Apple Silicon
+- [Linux ARM64 VMs via Tart](docs/tutorial/tart-linux.md) - ARM64 Linux on Apple Silicon
+- [More on Docker](docs/tutorial/docker.md) - custom images, socket detection, notes
 - [Run multiple backends together](docs/howto/mixed-backends.md)
 
-### Customize runner images
+### Custom runner images
 
-- [Build a custom Docker runner image](docs/howto/custom-docker-image.md)
-- [Build a custom Windows VM image](docs/howto/custom-windows-image.md)
-- [Build a custom Tart macOS image](docs/howto/custom-tart-macos-image.md)
-- [Build a custom Tart Linux image](docs/howto/custom-tart-linux-image.md)
-- [Update runner images without downtime](docs/howto/update-runner-images.md)
+- [Docker](docs/howto/custom-docker-image.md)
+- [Windows VM](docs/howto/custom-windows-image.md)
+- [Tart macOS](docs/howto/custom-tart-macos-image.md)
+- [Tart Linux](docs/howto/custom-tart-linux-image.md)
+
 
 ### Reference
 
