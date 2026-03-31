@@ -25,8 +25,6 @@ Add the outrunner user to the docker group so it can access the Docker socket:
 sudo usermod -aG docker outrunner
 ```
 
-This installs the binary, systemd service, and a default config at `/etc/outrunner/config.yml`.
-
 ## 3. Create a GitHub PAT
 
 Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta) and create a fine-grained token:

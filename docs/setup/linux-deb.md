@@ -5,8 +5,8 @@ This guide sets up outrunner with Docker. Make sure Docker is installed before c
 ## 1. Install outrunner
 
 ```bash
-curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
-sudo dpkg -i outrunner_amd64.deb
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/download/v1.0.0/outrunner_1.0.0_linux_amd64.deb
+sudo dpkg -i outrunner_1.0.0_linux_amd64.deb
 ```
 
 This installs the binary, systemd service, and a default config at `/etc/outrunner/config.yml`. It also adds the apt repository at `pkg.netwind.pl` so future updates arrive via `apt upgrade`.
@@ -20,16 +20,17 @@ sudo usermod -aG docker outrunner
 To skip the automatic repo setup and add it manually:
 
 ```bash
-OUTRUNNER_NO_REPO=1 sudo dpkg -i outrunner_*.deb
+OUTRUNNER_NO_REPO=1 sudo dpkg -i outrunner_1.0.0_linux_amd64.deb
 
-curl -fsSL https://pkg.netwind.pl/NetwindHQ/gha-outrunner/public.key | \
-  sudo gpg --dearmor -o /etc/apt/keyrings/outrunner.gpg
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://pkg.netwind.pl/NetwindHQ/gha-outrunner/public.key \
+  -o /etc/apt/keyrings/outrunner.asc
 sudo tee /etc/apt/sources.list.d/outrunner.sources <<EOF
 Types: deb
 URIs: https://pkg.netwind.pl/NetwindHQ/gha-outrunner
 Suites: stable
 Components: main
-Signed-By: /etc/apt/keyrings/outrunner.gpg
+Signed-By: /etc/apt/keyrings/outrunner.asc
 EOF
 ```
 

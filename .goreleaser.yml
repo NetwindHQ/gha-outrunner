@@ -77,8 +77,4 @@ signs:
       - "${artifact}"
 
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  disable: true
