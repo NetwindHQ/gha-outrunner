@@ -29,13 +29,19 @@ See the [provisioner reference](docs/reference/provisioners.md) for lifecycle de
 
 ## Get Started
 
-Pick a tutorial for your platform and backend -each one covers installation, configuration, and running your first job end to end:
+Install outrunner for your platform:
 
-- **Docker on Linux** -[the fastest path to a working runner](docs/tutorial/docker-linux.md)
-- **Docker on macOS** -[works with Colima, Docker Desktop, or Podman](docs/tutorial/docker-macos.md)
-- **Windows VMs on Linux** -[KVM/QEMU via libvirt](docs/tutorial/libvirt-windows.md)
-- **macOS VMs on Apple Silicon** -[using Tart](docs/tutorial/tart-macos-runner.md)
-- **Linux ARM64 VMs on Apple Silicon** -[using Tart](docs/tutorial/tart-linux-runner.md)
+- [Ubuntu / Debian](docs/setup/linux-deb.md)
+- [Fedora / RHEL / CentOS](docs/setup/linux-rpm.md)
+- [macOS (Homebrew)](docs/setup/macos.md)
+- [From source](docs/setup/from-source.md)
+
+Each guide gets you to a working Docker runner in minutes. For other backends:
+
+- [Windows VMs via libvirt/KVM](docs/tutorial/libvirt-windows.md) - full VM isolation
+- [macOS VMs via Tart](docs/tutorial/tart-macos.md) - Apple Silicon
+- [Linux ARM64 VMs via Tart](docs/tutorial/tart-linux.md) - ARM64 Linux on Apple Silicon
+- [More on Docker](docs/tutorial/docker.md) - custom images, socket detection, notes
 
 All packages and binaries are on the [Releases](https://github.com/NetwindHQ/gha-outrunner/releases) page.
 
@@ -63,6 +69,6 @@ All packages and binaries are on the [Releases](https://github.com/NetwindHQ/gha
 
 ## Used by
 
-- [delo.so](https://delo.so) -Desktop, offline-first CAD for makers. Uses outrunner for CI, build and test pipelines.
+- [delo.so](https://delo.so) - Desktop, offline-first CAD for makers. Uses outrunner for CI, build and test pipelines.
 
 Using outrunner? [Open a PR](https://github.com/NetwindHQ/gha-outrunner/edit/main/README.md) to add your project.

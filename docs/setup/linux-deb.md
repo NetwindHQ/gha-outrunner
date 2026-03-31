@@ -1,0 +1,111 @@
+# Install on Ubuntu / Debian
+
+This guide sets up outrunner with Docker. Make sure Docker is installed before continuing. For other backends, see the [backend guides](#next-steps) after completing setup.
+
+## 1. Install outrunner
+
+```bash
+curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
+sudo dpkg -i outrunner_amd64.deb
+```
+
+This installs the binary, systemd service, and a default config at `/etc/outrunner/config.yml`. It also adds the apt repository at `pkg.netwind.pl` so future updates arrive via `apt upgrade`.
+
+Add the outrunner user to the docker group so it can access the Docker socket:
+
+```bash
+sudo usermod -aG docker outrunner
+```
+
+To skip the automatic repo setup and add it manually:
+
+```bash
+OUTRUNNER_NO_REPO=1 sudo dpkg -i outrunner_*.deb
+
+curl -fsSL https://pkg.netwind.pl/NetwindHQ/gha-outrunner/public.key | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/outrunner.gpg
+sudo tee /etc/apt/sources.list.d/outrunner.sources <<EOF
+Types: deb
+URIs: https://pkg.netwind.pl/NetwindHQ/gha-outrunner
+Suites: stable
+Components: main
+Signed-By: /etc/apt/keyrings/outrunner.gpg
+EOF
+```
+
+## 2. Create a GitHub PAT
+
+Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta) and create a fine-grained token:
+
+- **Token name:** outrunner
+- **Resource owner:** Your user or organization
+- **Repository access:** Select the repository you want to use
+- **Permissions:** Administration -> Read and write
+
+## 3. Set up the token
+
+```bash
+echo -n "ghp_YOUR_TOKEN" | sudo tee /etc/outrunner/token
+sudo chmod 600 /etc/outrunner/token
+sudo chown outrunner:outrunner /etc/outrunner/token
+```
+
+## 4. Edit the config
+
+Edit `/etc/outrunner/config.yml` - set the `url` to your repository or organization and uncomment the `runners` section:
+
+```yaml
+url: https://github.com/your-org/your-repo
+token_file: /etc/outrunner/token
+
+runners:
+  linux:
+    labels: [self-hosted, linux]
+    docker:
+      image: ghcr.io/actions/actions-runner:latest
+```
+
+See the [configuration reference](../reference/configuration.md) for all options.
+
+## 5. Start the service
+
+```bash
+sudo systemctl enable --now outrunner
+sudo journalctl -u outrunner -f
+```
+
+You should see outrunner connect and start listening for jobs.
+
+## 6. Run a test workflow
+
+In your GitHub repository, create `.github/workflows/test-outrunner.yml`:
+
+```yaml
+name: Test Outrunner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  hello:
+    runs-on: [self-hosted, linux]
+    steps:
+      - run: echo "Hello from an ephemeral container!"
+      - run: hostname
+```
+
+Push this file, then go to GitHub -> Actions -> "Test Outrunner" -> "Run workflow".
+
+In the journal you should see the runner spawn, pick up the job, and clean up:
+
+```
+sudo journalctl -u outrunner -f
+```
+
+## Next steps
+
+outrunner is now running with Docker. For other backends:
+
+- [Windows VMs via libvirt/KVM](../tutorial/libvirt-windows.md)
+- [macOS VMs via Tart](../tutorial/tart-macos.md)
+- [Linux ARM64 VMs via Tart](../tutorial/tart-linux.md)

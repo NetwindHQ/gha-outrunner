@@ -1,14 +1,10 @@
-# Tutorial: Windows VM Runner on Linux
+# Windows VMs via libvirt/KVM
 
-In this tutorial we will set up outrunner on a Linux server to run GitHub Actions jobs in ephemeral Windows VMs via libvirt/KVM. By the end, you'll trigger a workflow that runs inside a Windows VM, created on demand and destroyed after.
-
-This is the most complex setup because it requires a Windows base image with the right drivers and guest agent. The payoff is full Windows CI with hardware-level isolation and no SSH or WinRM configuration.
+This guide assumes outrunner is already installed and running. If not, start with one of the [setup guides](../setup/).
 
 ## Prerequisites
 
-- A Linux server with KVM support (`grep -c vmx /proc/cpuinfo` or `grep -c svm /proc/cpuinfo` should return > 0)
-- Root or sudo access
-- A GitHub repository you own
+- Linux server with KVM support (`grep -c vmx /proc/cpuinfo` or `grep -c svm /proc/cpuinfo` should return > 0)
 - A Windows ISO or pre-built qcow2 image
 
 ## 1. Install libvirt and QEMU
@@ -16,7 +12,6 @@ This is the most complex setup because it requires a Windows base image with the
 On Ubuntu/Debian:
 
 ```bash
-sudo apt-get update
 sudo apt-get install -y qemu-kvm libvirt-daemon-system virtinst qemu-utils
 sudo systemctl enable --now libvirtd
 ```
@@ -28,34 +23,23 @@ sudo dnf install -y qemu-kvm libvirt virt-install qemu-img
 sudo systemctl enable --now libvirtd
 ```
 
-Add your user to the libvirt group:
+Add the outrunner user to the libvirt group:
 
 ```bash
-sudo usermod -aG libvirt $USER
-newgrp libvirt
+sudo usermod -aG libvirt outrunner
 ```
 
-Verify KVM works:
+## 2. Prepare a Windows base image
 
-```bash
-virsh list --all
-```
+You need a qcow2 image with Windows, virtio drivers, the QEMU Guest Agent, and the GitHub Actions runner installed.
 
-## 2. Prepare a Windows Base Image
+### Option A: Use a pre-built image
 
-You need a qcow2 image with:
-- Windows installed
-- Virtio drivers (disk and network)
-- QEMU Guest Agent
-- GitHub Actions runner
+The [rgl/windows-vagrant](https://github.com/rgl/windows-vagrant) project provides Windows images with virtio drivers and guest agent pre-installed.
 
-### Option A: Use a Pre-built Image
+### Option B: Build from scratch
 
-The [rgl/windows-vagrant](https://github.com/rgl/windows-vagrant) project provides Windows images with virtio drivers and guest agent pre-installed. Convert from Vagrant box to qcow2 if needed.
-
-### Option B: Build From Scratch
-
-Download the [virtio-win ISO](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/). It contains drivers and the guest agent.
+Download the [virtio-win ISO](https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/).
 
 Create a blank disk and install Windows:
 
@@ -78,10 +62,10 @@ virt-install \
 ```
 
 During Windows setup:
-1. Load the virtio-scsi driver from the virtio-win ISO (`vioscsi\w11\amd64`) to see the disk.
+
+1. Load the virtio-scsi driver from the ISO (`vioscsi\w11\amd64`) to see the disk.
 2. After installation, install all virtio drivers from the ISO.
-3. Install the QEMU Guest Agent from the ISO (`guest-agent\qemu-ga-x86_64.msi`).
-4. Verify the "QEMU Guest Agent" service is running and set to Automatic.
+3. Install the QEMU Guest Agent (`guest-agent\qemu-ga-x86_64.msi`). Verify the service is running and set to Automatic.
 
 Then install the runner:
 
@@ -92,7 +76,7 @@ Expand-Archive runner.zip -DestinationPath .
 Remove-Item runner.zip
 ```
 
-Shut down the VM:
+Shut down and clean up:
 
 ```bash
 virsh shutdown windows-setup
@@ -101,32 +85,17 @@ virsh undefine windows-setup
 
 The qcow2 file is now your golden image.
 
-## 3. Install outrunner
+See [Build a custom Windows VM image](../howto/custom-windows-image.md) for more details.
 
-```bash
-curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
-sudo dpkg -i outrunner_amd64.deb
-```
+## 3. Configure outrunner
 
-Or from source: `go install github.com/NetwindHQ/gha-outrunner/cmd/outrunner@latest`
-
-## 4. Create a GitHub PAT
-
-Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta) and create a fine-grained token:
-
-- **Token name:** outrunner
-- **Resource owner:** Your user or organization
-- **Repository access:** Select the repository you want to use
-- **Permissions:** Administration → Read and write
-
-## 5. Write a Configuration File
-
-Create `outrunner.yml`:
+Update your config to use the libvirt backend:
 
 ```yaml
 runners:
   windows:
     labels: [self-hosted, windows]
+    max_runners: 1
     libvirt:
       path: /var/lib/libvirt/images/ci-runners/windows-builder.qcow2
       runner_cmd: 'C:\actions-runner\run.cmd'
@@ -134,32 +103,18 @@ runners:
       memory: 8192
 ```
 
-## 6. Start outrunner
+Restart outrunner to pick up the new config:
 
 ```bash
-outrunner \
-  --url https://github.com/YOUR_USER/YOUR_REPO \
-  --token ghp_YOUR_TOKEN \
-  --config outrunner.yml \
-  --max-runners 1
+sudo systemctl restart outrunner
 ```
 
-Note: We set `--max-runners 1` because Windows VMs are resource-heavy.
+## 4. Test it
 
-You should see:
-
-```
-2026-03-30 14:05:09 INFO Loaded config runners=1
-2026-03-30 14:05:10 INFO Scale set ready scaleSet=windows id=7
-2026-03-30 14:05:10 INFO Listening for jobs scaleSet=windows maxRunners=1
-```
-
-## 7. Create a Test Workflow
-
-In your repository, create `.github/workflows/test-outrunner.yml`:
+Create `.github/workflows/test-windows.yml` in your repository:
 
 ```yaml
-name: Test Outrunner
+name: Test Windows
 
 on:
   workflow_dispatch:
@@ -170,42 +125,24 @@ jobs:
     steps:
       - run: echo "Hello from a Windows VM!"
       - run: systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
-      - run: wmic cpu get name
 ```
 
-Push and trigger from GitHub → Actions.
+Push and trigger from GitHub -> Actions.
 
-## 8. Watch It Work
+The guest agent wait may take 30-90 seconds while Windows boots.
 
-In the outrunner terminal:
+## How it works
 
-```
-2026-03-30 14:06:12 INFO Spawning runner scaleSet=windows scaler.name=windows-a1b2c3d4 scaler.runnerID=1
-2026-03-30 14:06:45 INFO Starting runner in VM scaleSet=windows libvirt.name=windows-a1b2c3d4
-2026-03-30 14:06:45 INFO Runner started in VM scaleSet=windows libvirt.name=windows-a1b2c3d4 libvirt.pid=1234
-2026-03-30 14:06:52 INFO Job completed scaleSet=windows scaler.runnerName=windows-a1b2c3d4 scaler.result=succeeded
-2026-03-30 14:06:52 INFO Stopping runner scaleSet=windows scaler.name=windows-a1b2c3d4
-```
+1. outrunner creates a copy-on-write qcow2 overlay backed by the golden image.
+2. Boots a transient KVM domain with the overlay disk.
+3. Waits for the QEMU Guest Agent to respond.
+4. Executes the runner via `guest-exec`.
+5. After the job, destroys the domain and deletes the overlay.
 
-The guest agent wait may take 30-90 seconds while Windows boots. After that, the runner starts and picks up the job.
+The golden image is never modified.
 
-## 9. Clean Up
+## Next steps
 
-Press Ctrl+C. outrunner destroys the VM and deletes the overlay file. The golden image is untouched.
-
-## What Happened
-
-1. outrunner created a copy-on-write qcow2 overlay backed by the golden image.
-2. It booted a transient KVM domain with the overlay disk.
-3. It waited for the QEMU Guest Agent inside Windows to respond to pings.
-4. It executed `C:\actions-runner\run.cmd --jitconfig <config>` via the guest agent.
-5. The runner registered with GitHub, ran the job, and exited.
-6. outrunner destroyed the domain and deleted the overlay.
-
-The golden image was never modified. All writes went to the ephemeral overlay.
-
-## Next Steps
-
-- [How to build a custom Windows VM image](../howto/custom-windows-image.md)
-- [How to deploy as a systemd service](../howto/systemd-service.md)
-- [How to run multiple backends together](../howto/mixed-backends.md)
+- [Build a custom Windows VM image](../howto/custom-windows-image.md)
+- [Run multiple backends together](../howto/mixed-backends.md)
+- [Configuration reference](../reference/configuration.md)
