@@ -7,13 +7,20 @@
 brew tap NetwindHQ/tap
 brew install outrunner
 
-# Ubuntu / Debian
+# Ubuntu / Debian (automatically adds apt repo for future updates)
 curl -LO https://github.com/NetwindHQ/gha-outrunner/releases/latest/download/outrunner_amd64.deb
 sudo dpkg -i outrunner_amd64.deb
+
+# Fedora / RHEL
+sudo dnf config-manager addrepo \
+  --from-repofile=https://pkg.netwind.pl/NetwindHQ/gha-outrunner/outrunner.repo
+sudo dnf install outrunner
 
 # From source
 go install github.com/NetwindHQ/gha-outrunner/cmd/outrunner@latest
 ```
+
+The deb package automatically sets up the apt repository at `pkg.netwind.pl` so future updates arrive via `apt upgrade`. To skip this, install with `OUTRUNNER_NO_REPO=1 dpkg -i outrunner_*.deb`.
 
 ## Usage
 
@@ -32,6 +39,7 @@ outrunner registers a GitHub Actions [scale set](https://github.com/actions/scal
 | `--token` | string | | GitHub PAT. Overrides env var and config. |
 | `--max-runners` | int | `2` | Default max concurrent runners per scale set. |
 | `-h`, `--help` | | | Show help. |
+| `-v`, `--version` | | | Print version. |
 
 ## Token Resolution
 

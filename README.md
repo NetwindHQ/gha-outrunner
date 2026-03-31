@@ -13,7 +13,7 @@ outrunner provisions fresh Docker containers or VMs for each GitHub Actions job,
 
 ## Why outrunner?
 
-GitHub's [Actions Runner Controller (ARC)](https://github.com/actions/actions-runner-controller) requires Kubernetes. If you're running on bare metal or a simple VPS, you shouldn't need a cluster just to get ephemeral runners. outrunner gives you the same isolation guarantees with Docker, libvirt, or Tart — no orchestrator needed.
+GitHub's [Actions Runner Controller (ARC)](https://github.com/actions/actions-runner-controller) requires Kubernetes. If you're running on bare metal or a simple VPS, you shouldn't need a cluster just to get ephemeral runners. outrunner gives you the same isolation guarantees with Docker, libvirt, or Tart. No additional orchestrator needed.
 
 Read more about the [motivation and design](docs/explanation/why-outrunner.md), [architecture](docs/explanation/architecture.md), and [security model](docs/explanation/security.md).
 
@@ -29,13 +29,13 @@ See the [provisioner reference](docs/reference/provisioners.md) for lifecycle de
 
 ## Get Started
 
-Pick a tutorial for your platform and backend — each one covers installation, configuration, and running your first job end to end:
+Pick a tutorial for your platform and backend -each one covers installation, configuration, and running your first job end to end:
 
-- **Docker on Linux** — [the fastest path to a working runner](docs/tutorial/docker-linux.md)
-- **Docker on macOS** — [works with Colima, Docker Desktop, or Podman](docs/tutorial/docker-macos.md)
-- **Windows VMs on Linux** — [KVM/QEMU via libvirt](docs/tutorial/libvirt-windows.md)
-- **macOS VMs on Apple Silicon** — [using Tart](docs/tutorial/tart-macos-runner.md)
-- **Linux ARM64 VMs on Apple Silicon** — [using Tart](docs/tutorial/tart-linux-runner.md)
+- **Docker on Linux** -[the fastest path to a working runner](docs/tutorial/docker-linux.md)
+- **Docker on macOS** -[works with Colima, Docker Desktop, or Podman](docs/tutorial/docker-macos.md)
+- **Windows VMs on Linux** -[KVM/QEMU via libvirt](docs/tutorial/libvirt-windows.md)
+- **macOS VMs on Apple Silicon** -[using Tart](docs/tutorial/tart-macos-runner.md)
+- **Linux ARM64 VMs on Apple Silicon** -[using Tart](docs/tutorial/tart-linux-runner.md)
 
 All packages and binaries are on the [Releases](https://github.com/NetwindHQ/gha-outrunner/releases) page.
 
@@ -63,4 +63,6 @@ All packages and binaries are on the [Releases](https://github.com/NetwindHQ/gha
 
 ## Used by
 
-- [delo.so](https://delo.so) — Desktop, offline-first CAD for makers. Uses outrunner for CI, build and test pipelines.
+- [delo.so](https://delo.so) -Desktop, offline-first CAD for makers. Uses outrunner for CI, build and test pipelines.
+
+Using outrunner? [Open a PR](https://github.com/NetwindHQ/gha-outrunner/edit/main/README.md) to add your project.
