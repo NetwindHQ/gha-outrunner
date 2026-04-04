@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0] - 2026-04-04
+
+### Features
+
+- Docker provisioner: bind mounts (`mounts` field with `source`, `target`, `read_only` per entry)
+- Tart provisioner: shared directories via `tart run --dir` (`mounts` field with `name`, `source`, `read_only` per entry)
+- Libvirt provisioner: virtiofs host directory share (`mount` field with `source`; tag derived from basename; `memoryBacking`/`memfd` added to domain XML automatically)
+
+Primary use case: persistent build cache shared across ephemeral runners without network round-trips.
+
 ## [1.0.0] - 2026-03-31
 
 First stable release.
