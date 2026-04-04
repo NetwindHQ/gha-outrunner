@@ -8,3 +8,11 @@ runners:
     labels: [self-hosted, linux]
     docker:
       image: outrunner-runner:latest
+      # Optional: bind mount a host directory into every container.
+      # Useful for a persistent build cache (e.g. vcpkg, cargo, gradle).
+      # mounts:
+      #   - source: /var/cache/vcpkg
+      #     target: /opt/vcpkg-cache
+      #   - source: /var/cache/cargo
+      #     target: /opt/cargo-cache
+      #     read_only: false

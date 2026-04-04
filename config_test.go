@@ -232,6 +232,105 @@ func TestLoadConfigRunnerCmd(t *testing.T) {
 	}
 }
 
+func TestLoadConfigMounts(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  docker-runner:
+    labels: [linux]
+    docker:
+      image: runner:latest
+      mounts:
+        - source: /var/cache/vcpkg
+          target: /opt/vcpkg-cache
+        - source: /var/cache/cargo
+          target: /opt/cargo-cache
+          read_only: true
+  tart-runner:
+    labels: [macos]
+    tart:
+      image: base:latest
+      mounts:
+        - name: vcpkg
+          source: /var/cache/vcpkg
+        - name: cargo
+          source: /var/cache/cargo
+          read_only: true
+  windows-runner:
+    labels: [windows]
+    libvirt:
+      path: /images/win.qcow2
+      mount:
+        source: /var/cache/vcpkg
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	// Docker mounts
+	docker := cfg.Runners["docker-runner"].Docker
+	if len(docker.Mounts) != 2 {
+		t.Fatalf("expected 2 docker mounts, got %d", len(docker.Mounts))
+	}
+	if docker.Mounts[0].Source != "/var/cache/vcpkg" || docker.Mounts[0].Target != "/opt/vcpkg-cache" || docker.Mounts[0].ReadOnly {
+		t.Errorf("unexpected docker mount[0]: %+v", docker.Mounts[0])
+	}
+	if docker.Mounts[1].Source != "/var/cache/cargo" || docker.Mounts[1].Target != "/opt/cargo-cache" || !docker.Mounts[1].ReadOnly {
+		t.Errorf("unexpected docker mount[1]: %+v", docker.Mounts[1])
+	}
+
+	// Tart mounts
+	tart := cfg.Runners["tart-runner"].Tart
+	if len(tart.Mounts) != 2 {
+		t.Fatalf("expected 2 tart mounts, got %d", len(tart.Mounts))
+	}
+	if tart.Mounts[0].Name != "vcpkg" || tart.Mounts[0].Source != "/var/cache/vcpkg" || tart.Mounts[0].ReadOnly {
+		t.Errorf("unexpected tart mount[0]: %+v", tart.Mounts[0])
+	}
+	if tart.Mounts[1].Name != "cargo" || tart.Mounts[1].Source != "/var/cache/cargo" || !tart.Mounts[1].ReadOnly {
+		t.Errorf("unexpected tart mount[1]: %+v", tart.Mounts[1])
+	}
+
+	// Libvirt mount
+	libvirt := cfg.Runners["windows-runner"].Libvirt
+	if libvirt.Mount == nil {
+		t.Fatal("expected libvirt mount")
+	}
+	if libvirt.Mount.Source != "/var/cache/vcpkg" {
+		t.Errorf("unexpected libvirt mount source: %s", libvirt.Mount.Source)
+	}
+}
+
+func TestLoadConfigNoMounts(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  linux:
+    labels: [linux]
+    docker:
+      image: runner:latest
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	if mounts := cfg.Runners["linux"].Docker.Mounts; len(mounts) != 0 {
+		t.Errorf("expected no mounts, got %d", len(mounts))
+	}
+}
+
 func TestLoadConfigInvalidYAML(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")

@@ -102,6 +102,40 @@ runners:
       image: macos-runner
 ```
 
+## Persistent Build Cache
+
+Each backend supports mounting a host directory into the runner environment. This is useful for a persistent build cache (e.g. package manager caches, compiler caches) that survives across ephemeral runners without being re-downloaded on every job.
+
+```yaml
+runners:
+  linux:
+    labels: [self-hosted, linux]
+    docker:
+      image: outrunner-runner:latest
+      mounts:
+        - source: /var/cache/build
+          target: /opt/build-cache
+
+  windows:
+    labels: [self-hosted, windows]
+    libvirt:
+      path: /images/windows-builder.qcow2
+      runner_cmd: 'C:\actions-runner\run.cmd'
+      mount:
+        source: /var/cache/build   # appears as a drive letter (e.g. Z:) in Windows
+
+  macos:
+    labels: [self-hosted, macos]
+    tart:
+      image: macos-runner
+      runner_cmd: /actions-runner/run.sh
+      mounts:
+        - name: build-cache        # accessible at /Volumes/My Shared Files/build-cache
+          source: /var/cache/build
+```
+
+See the [provisioners reference](../reference/provisioners.md) for backend-specific details on how the mounts appear inside the runner.
+
 ## Platform Constraints
 
 Not all backends work on all hosts:

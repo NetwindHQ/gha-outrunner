@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 )
 
@@ -91,6 +92,16 @@ func (d *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) e
 		_ = reader.Close()
 	}
 
+	var mounts []mount.Mount
+	for _, m := range dcfg.Mounts {
+		mounts = append(mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   m.Source,
+			Target:   m.Target,
+			ReadOnly: m.ReadOnly,
+		})
+	}
+
 	resp, err := d.client.ContainerCreate(ctx,
 		&container.Config{
 			Image: img,
@@ -102,6 +113,7 @@ func (d *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) e
 		},
 		&container.HostConfig{
 			AutoRemove: true,
+			Mounts:     mounts,
 		},
 		nil, nil, req.Name,
 	)

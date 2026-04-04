@@ -57,7 +57,16 @@ func (t *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) e
 
 	go func() {
 		t.logger.Debug("Starting VM", slog.String("name", req.Name))
-		cmd := exec.CommandContext(runCtx, "tart", "run", "--no-graphics", req.Name)
+		args := []string{"run", "--no-graphics"}
+		for _, m := range img.Mounts {
+			dir := m.Name + ":" + m.Source
+			if m.ReadOnly {
+				dir += ":ro"
+			}
+			args = append(args, "--dir="+dir)
+		}
+		args = append(args, req.Name)
+		cmd := exec.CommandContext(runCtx, "tart", args...)
 		if err := cmd.Start(); err != nil {
 			if runCtx.Err() == nil {
 				t.logger.Error("Failed to start VM",

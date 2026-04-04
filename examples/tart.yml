@@ -12,3 +12,14 @@ runners:
       runner_cmd: /actions-runner/run.sh
       cpus: 4
       memory: 8192
+      # Optional: share host directories into the VM via virtiofs (--dir).
+      # On macOS guests: accessible at /Volumes/My Shared Files/<name>
+      # On Linux guests: mount manually with:
+      #   mount -t virtiofs com.apple.virtio-fs.automount /mnt/shared
+      #   then access at /mnt/shared/<name>
+      # mounts:
+      #   - name: vcpkg
+      #     source: /var/cache/vcpkg
+      #   - name: cargo
+      #     source: /var/cache/cargo
+      #     read_only: false

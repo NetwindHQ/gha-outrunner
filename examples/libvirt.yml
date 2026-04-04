@@ -12,3 +12,9 @@ runners:
       runner_cmd: 'C:\actions-runner\run.cmd'
       cpus: 4
       memory: 8192
+      # Optional: share a host directory into the VM via virtiofs.
+      # Requires: virtiofsd installed on the host (apt install virtiofsd)
+      #           WinFsp installed in the guest image.
+      # The directory appears as a drive letter (e.g. Z:) in Windows.
+      # mount:
+      #   source: /var/cache/vcpkg

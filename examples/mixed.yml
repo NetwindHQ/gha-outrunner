@@ -9,6 +9,11 @@ runners:
     max_runners: 4
     docker:
       image: outrunner-runner:latest
+      # Optional: bind-mount a host directory into every container.
+      # Useful for a persistent build cache shared across ephemeral runners.
+      # mounts:
+      #   - source: /var/cache/build
+      #     target: /opt/build-cache
 
   windows:
     labels: [self-hosted, windows, x64]
@@ -18,6 +23,11 @@ runners:
       runner_cmd: 'C:\actions-runner\run.cmd'
       cpus: 4
       memory: 8192
+      # Optional: share a host directory into the VM via virtiofs.
+      # Appears as a drive letter (e.g. Z:) in Windows.
+      # Requires: virtiofsd on the host, WinFsp in the guest image.
+      # mount:
+      #   source: /var/cache/build
 
   macos:
     labels: [self-hosted, macos, arm64]
@@ -27,3 +37,11 @@ runners:
       runner_cmd: /actions-runner/run.sh
       cpus: 4
       memory: 8192
+      # Optional: share host directories into the VM via virtiofs.
+      # On macOS guests: accessible at /Volumes/My Shared Files/<name>
+      # On Linux guests: mount manually with:
+      #   mount -t virtiofs com.apple.virtio-fs.automount /mnt/shared
+      #   then access at /mnt/shared/<name>
+      # mounts:
+      #   - name: build-cache
+      #     source: /var/cache/build

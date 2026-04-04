@@ -27,27 +27,53 @@ type RunnerConfig struct {
 	Tart       *TartImage    `yaml:"tart,omitempty"`
 }
 
+// DockerMount defines a bind mount for a Docker container.
+type DockerMount struct {
+	Source   string `yaml:"source"`
+	Target   string `yaml:"target"`
+	ReadOnly bool   `yaml:"read_only"`
+}
+
+// TartMount defines a shared directory for a Tart VM.
+// Name is passed as the --dir label; it becomes the subdirectory name
+// under the mount point inside the guest.
+type TartMount struct {
+	Name     string `yaml:"name"`
+	Source   string `yaml:"source"`
+	ReadOnly bool   `yaml:"read_only"`
+}
+
+// LibvirtMount defines a virtiofs host directory share for a libvirt VM.
+// The directory is exposed via virtiofs; the tag is derived from the source basename.
+// On Windows guests, VirtioFsSvc mounts it automatically as a drive letter.
+type LibvirtMount struct {
+	Source string `yaml:"source"`
+}
+
 // DockerImage configures a Docker-based runner.
 type DockerImage struct {
-	Image     string `yaml:"image"`
-	RunnerCmd string `yaml:"runner_cmd"`
+	Image     string        `yaml:"image"`
+	RunnerCmd string        `yaml:"runner_cmd"`
+	Mounts    []DockerMount `yaml:"mounts"`
 }
 
 // LibvirtImage configures a libvirt/QEMU-based runner.
 type LibvirtImage struct {
-	Path      string `yaml:"path"`
-	RunnerCmd string `yaml:"runner_cmd"`
-	Socket    string `yaml:"socket"`
-	CPUs      int    `yaml:"cpus"`
-	MemoryMB  int    `yaml:"memory"`
+	Path      string        `yaml:"path"`
+	RunnerCmd string        `yaml:"runner_cmd"`
+	Socket    string        `yaml:"socket"`
+	CPUs      int           `yaml:"cpus"`
+	MemoryMB  int           `yaml:"memory"`
+	Mount     *LibvirtMount `yaml:"mount"`
 }
 
 // TartImage configures a Tart-based runner (macOS/Linux on Apple Silicon).
 type TartImage struct {
-	Image     string `yaml:"image"` // OCI image or local VM name
-	RunnerCmd string `yaml:"runner_cmd"`
-	CPUs      int    `yaml:"cpus"`
-	MemoryMB  int    `yaml:"memory"`
+	Image     string      `yaml:"image"` // OCI image or local VM name
+	RunnerCmd string      `yaml:"runner_cmd"`
+	CPUs      int         `yaml:"cpus"`
+	MemoryMB  int         `yaml:"memory"`
+	Mounts    []TartMount `yaml:"mounts"`
 }
 
 // ProviderType returns which provisioner backend this runner uses.

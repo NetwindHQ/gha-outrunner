@@ -274,12 +274,18 @@ type domainXMLParams struct {
 	CPUs        int
 	MemoryMB    int
 	Network     string
+	MountSource string // empty = no virtiofs mount
+	MountTag    string // virtiofs tag (basename of source)
 }
 
 var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
   <name>{{.Name}}</name>
   <memory unit='MiB'>{{.MemoryMB}}</memory>
-  <vcpu>{{.CPUs}}</vcpu>
+  <vcpu>{{.CPUs}}</vcpu>{{if .MountSource}}
+  <memoryBacking>
+    <source type='memfd'/>
+    <access mode='shared'/>
+  </memoryBacking>{{end}}
   <os firmware='efi'>
     <type arch='x86_64' machine='q35'>hvm</type>
     <boot dev='hd'/>
@@ -302,7 +308,12 @@ var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
     </interface>
     <channel type='unix'>
       <target type='virtio' name='org.qemu.guest_agent.0'/>
-    </channel>
+    </channel>{{if .MountSource}}
+    <filesystem type='mount' accessmode='passthrough'>
+      <driver type='virtiofs'/>
+      <source dir='{{.MountSource}}'/>
+      <target dir='{{.MountTag}}'/>
+    </filesystem>{{end}}
     <serial type='pty'/>
     <console type='pty'/>
   </devices>
@@ -315,6 +326,10 @@ func renderDomainXML(name, overlayPath string, img *outrunner.LibvirtImage, netw
 		CPUs:        img.CPUs,
 		MemoryMB:    img.MemoryMB,
 		Network:     network,
+	}
+	if img.Mount != nil {
+		params.MountSource = img.Mount.Source
+		params.MountTag = filepath.Base(img.Mount.Source)
 	}
 
 	var buf strings.Builder

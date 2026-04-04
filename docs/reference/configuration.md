@@ -15,17 +15,27 @@ runners:
     docker:                          # Use Docker backend.
       image: <string>                # Docker image name or tag.
       runner_cmd: <string>           # Default: ./run.sh
+      mounts:                        # Optional bind mounts.
+        - source: <string>           # Host path.
+          target: <string>           # Container path.
+          read_only: <bool>          # Default: false
     libvirt:                         # Use libvirt/KVM backend.
       path: <string>                 # Path to the base qcow2 disk image.
       runner_cmd: <string>           # Default: /actions-runner/run.sh
       socket: <string>               # Default: /var/run/libvirt/libvirt-sock
       cpus: <int>                    # Default: 4
       memory: <int>                  # Default: 8192 (MiB)
+      mount:                         # Optional virtiofs host directory share.
+        source: <string>             # Host path. Tag is derived from the basename.
     tart:                            # Use Tart backend.
       image: <string>                # OCI image URL or local VM name.
       runner_cmd: <string>           # Default: /actions-runner/run.sh
       cpus: <int>                    # Default: 4
       memory: <int>                  # Default: 8192 (MiB)
+      mounts:                        # Optional shared directories (--dir).
+        - name: <string>             # Directory name inside the guest.
+          source: <string>           # Host path.
+          read_only: <bool>          # Default: false
 ```
 
 ## Top-Level Fields
@@ -90,8 +100,17 @@ Provisions a Docker container per job.
 |-------|------|---------|-------------|
 | `image` | string | (required) | Docker image reference. Can be a local tag (`runner:latest`) or a registry reference (`ghcr.io/org/runner:v1`). |
 | `runner_cmd` | string | `./run.sh` | Command to start the runner inside the container. |
+| `mounts` | list | `[]` | Bind mounts to attach to the container. See below. |
 
 The container runs `<runner_cmd> --jitconfig <config>` as its command. The image must have the GitHub Actions runner installed at the working directory. See [Image Requirements](image-requirements.md).
+
+**`mounts` entries:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `source` | string | (required) | Absolute path on the host. |
+| `target` | string | (required) | Absolute path inside the container. |
+| `read_only` | bool | `false` | Mount read-only. |
 
 ### `runners.<name>.libvirt`
 
@@ -104,6 +123,15 @@ Provisions a KVM/QEMU virtual machine per job using a copy-on-write overlay.
 | `socket` | string | `/var/run/libvirt/libvirt-sock` | Path to the libvirtd Unix socket. |
 | `cpus` | int | `4` | Number of vCPUs allocated to the VM. |
 | `memory` | int | `8192` | Memory in MiB allocated to the VM. |
+| `mount` | object | (none) | Optional virtiofs host directory share. See below. |
+
+**`mount` fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `source` | string | (required) | Absolute path on the host to share into the VM. The virtiofs tag is derived from the directory basename. |
+
+The share is exposed via virtiofs. On Windows guests, `VirtioFsSvc` mounts it automatically as a drive letter (requires WinFsp installed in the guest image). `virtiofsd` must be installed on the host (`apt install virtiofsd`).
 
 ### `runners.<name>.tart`
 
@@ -115,6 +143,15 @@ Provisions a Tart virtual machine per job by cloning from a base image.
 | `runner_cmd` | string | `/actions-runner/run.sh` | Command to execute inside the VM via `tart exec`. |
 | `cpus` | int | `4` | Number of vCPUs allocated to the VM. |
 | `memory` | int | `8192` | Memory in MiB allocated to the VM. |
+| `mounts` | list | `[]` | Shared directories passed to `tart run --dir`. See below. |
+
+**`mounts` entries:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | (required) | Directory name as it appears inside the guest. On macOS guests this is a subdirectory of `/Volumes/My Shared Files/`; on Linux guests mount the share manually with `mount -t virtiofs com.apple.virtio-fs.automount <mountpoint>`. |
+| `source` | string | (required) | Absolute path on the host. |
+| `read_only` | bool | `false` | Mount read-only. |
 
 ## Examples
 
@@ -131,7 +168,7 @@ runners:
       image: outrunner-runner:latest
 ```
 
-Mixed backends:
+Mixed backends with shared cache:
 
 ```yaml
 url: https://github.com/myorg
@@ -143,6 +180,9 @@ runners:
     max_runners: 4
     docker:
       image: outrunner-runner:latest
+      mounts:
+        - source: /var/cache/vcpkg
+          target: /opt/vcpkg-cache
 
   windows:
     labels: [self-hosted, windows]
@@ -152,6 +192,8 @@ runners:
       runner_cmd: 'C:\actions-runner\run.cmd'
       cpus: 4
       memory: 8192
+      mount:
+        source: /var/cache/vcpkg
 
   macos:
     labels: [self-hosted, macos]
@@ -161,4 +203,7 @@ runners:
       runner_cmd: /Users/admin/actions-runner/run.sh
       cpus: 4
       memory: 8192
+      mounts:
+        - name: vcpkg
+          source: /var/cache/vcpkg
 ```

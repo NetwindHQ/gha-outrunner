@@ -26,6 +26,18 @@ If `DOCKER_HOST` is not set, outrunner runs `docker context inspect` to find the
 
 The detected socket path is verified to exist before use.
 
+### Bind Mounts
+
+The `mounts` config field attaches host directories into each container as bind mounts. This is useful for a persistent build cache that survives across ephemeral containers without being downloaded each run.
+
+```yaml
+docker:
+  image: outrunner-runner:latest
+  mounts:
+    - source: /var/cache/vcpkg
+      target: /opt/vcpkg-cache
+```
+
 ### Requirements
 
 - Docker Engine or compatible runtime
@@ -62,6 +74,23 @@ VMs are created with:
 - **Network:** virtio NIC on the configured libvirt network (default: `default`)
 - **Guest agent:** virtio-serial channel (`org.qemu.guest_agent.0`)
 - **Console:** Serial + console (for debugging via `virsh console`)
+
+### virtiofs Mount
+
+The `mount` config field shares a host directory into the VM via virtiofs. This is the recommended approach for a persistent build cache — the host directory is accessible at near-native speed without any network round-trip.
+
+```yaml
+libvirt:
+  path: /images/windows-builder.qcow2
+  mount:
+    source: /var/cache/vcpkg
+```
+
+The virtiofs tag is derived from the source directory basename. On Windows guests, `VirtioFsSvc` mounts it automatically as a drive letter once the VM boots. Requires:
+
+- `virtiofsd` installed on the host (`apt install virtiofsd`)
+- WinFsp installed in the guest image (for Windows guests)
+- `memfd`-backed shared memory (added to the domain XML automatically when `mount` is set)
 
 ### Connection
 
@@ -114,6 +143,23 @@ The `image` field can be:
   - [Tart Guest Agent](https://github.com/cirruslabs/tart-guest-agent) installed and running
   - GitHub Actions runner installed
 - Sufficient disk space for VM clones
+
+### Shared Directories
+
+The `mounts` config field passes `--dir` flags to `tart run`, sharing host directories into the VM via virtiofs. This is the recommended approach for a persistent build cache.
+
+```yaml
+tart:
+  image: ghcr.io/cirruslabs/macos-sequoia-base:latest
+  mounts:
+    - name: vcpkg
+      source: /var/cache/vcpkg
+```
+
+How the share appears inside the guest depends on the guest OS:
+
+- **macOS guests:** Automatically mounted at `/Volumes/My Shared Files/<name>`. No setup needed.
+- **Linux guests:** Mount manually: `mount -t virtiofs com.apple.virtio-fs.automount /mnt/shared`. The `<name>` becomes a subdirectory under the mount point.
 
 ### Cleanup
 
