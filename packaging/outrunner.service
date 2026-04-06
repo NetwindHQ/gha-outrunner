@@ -25,7 +25,9 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/tmp
-PrivateTmp=true
+# PrivateTmp must be off — the libvirt provisioner creates qcow2 overlays
+# in /tmp that libvirt/QEMU needs to access from outside the namespace.
+PrivateTmp=false
 
 [Install]
 WantedBy=multi-user.target
