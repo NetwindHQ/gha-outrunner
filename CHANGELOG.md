@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.2] - 2026-04-08
+
+### Fixes
+
+- Capture tart stderr on VM/runner failure — previously only logged `exit status 1` with no detail. Stderr is now streamed to a temp file and the last 1KB shown inline in the error log. Log files are cleaned up on success.
+
 ## [1.1.1] - 2026-04-06
 
 Minor bugfix release.
