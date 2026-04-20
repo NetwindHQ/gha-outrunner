@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0] - 2026-04-20
+
+### Features
+
+- Multi-repo config: runners can now specify per-runner `url` and `token_file` to target different repositories from a single outrunner instance. Runners without overrides fall back to the global config values. Fully backward compatible — existing configs work unchanged.
+- Scaleset clients are deduplicated by (url, token) pair, so runners targeting the same repository share a single client.
+- Deterministic runner startup order (sorted alphabetically by scale set name).
+
 ## [1.1.2] - 2026-04-08
 
 ### Fixes
