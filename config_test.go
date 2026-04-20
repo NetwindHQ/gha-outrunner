@@ -11,7 +11,8 @@ func TestLoadConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `runners:
+	content := `url: https://github.com/org/repo
+runners:
   linux:
     labels: [self-hosted, linux]
     docker:
@@ -120,7 +121,8 @@ func TestLoadConfigDefaults(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `runners:
+	content := `url: https://github.com/org/repo
+runners:
   tart-runner:
     labels: [macos]
     tart:
@@ -148,7 +150,8 @@ func TestLoadConfigCustomValues(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `runners:
+	content := `url: https://github.com/org/repo
+runners:
   beefy:
     labels: [linux]
     libvirt:
@@ -178,7 +181,8 @@ func TestLoadConfigMaxRunners(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `runners:
+	content := `url: https://github.com/org/repo
+runners:
   linux:
     labels: [linux]
     max_runners: 8
@@ -203,7 +207,8 @@ func TestLoadConfigRunnerCmd(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `runners:
+	content := `url: https://github.com/org/repo
+runners:
   linux:
     labels: [linux]
     docker:
@@ -236,7 +241,8 @@ func TestLoadConfigMounts(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `runners:
+	content := `url: https://github.com/org/repo
+runners:
   docker-runner:
     labels: [linux]
     docker:
@@ -311,7 +317,8 @@ func TestLoadConfigNoMounts(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
 
-	content := `runners:
+	content := `url: https://github.com/org/repo
+runners:
   linux:
     labels: [linux]
     docker:
@@ -471,6 +478,176 @@ func TestResolveURL(t *testing.T) {
 		_, err := ResolveURL("", &Config{})
 		if err == nil {
 			t.Fatal("expected error when no URL source available")
+		}
+	})
+}
+
+func TestLoadConfigPerRunnerURL(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `url: https://github.com/org/repo-a
+runners:
+  linux:
+    labels: [linux]
+    docker:
+      image: runner:latest
+  windows:
+    url: https://github.com/org/repo-b
+    token_file: /tmp/token-b
+    labels: [windows]
+    libvirt:
+      path: /tmp/win.qcow2
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	linux := cfg.Runners["linux"]
+	if linux.URL != "" {
+		t.Errorf("expected empty per-runner URL for linux, got %s", linux.URL)
+	}
+
+	windows := cfg.Runners["windows"]
+	if windows.URL != "https://github.com/org/repo-b" {
+		t.Errorf("expected per-runner URL for windows, got %s", windows.URL)
+	}
+	if windows.TokenFile != "/tmp/token-b" {
+		t.Errorf("expected per-runner token_file for windows, got %s", windows.TokenFile)
+	}
+}
+
+func TestLoadConfigNoURLAnywhere(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  linux:
+    labels: [linux]
+    docker:
+      image: runner:latest
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// LoadConfig should succeed — URL validation happens at resolve time
+	// so that --url flag users are not broken.
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	// But resolving the URL without a flag should fail.
+	runner := cfg.Runners["linux"]
+	_, err = ResolveRunnerURL("", cfg, &runner)
+	if err == nil {
+		t.Fatal("expected error when no URL is set globally, per-runner, or via flag")
+	}
+}
+
+func TestLoadConfigPerRunnerURLWithoutGlobal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  linux:
+    url: https://github.com/org/repo-a
+    labels: [linux]
+    docker:
+      image: runner:latest
+  windows:
+    url: https://github.com/org/repo-b
+    labels: [windows]
+    libvirt:
+      path: /tmp/win.qcow2
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.URL != "" {
+		t.Errorf("expected empty global URL, got %s", cfg.URL)
+	}
+	if cfg.Runners["linux"].URL != "https://github.com/org/repo-a" {
+		t.Errorf("unexpected linux URL: %s", cfg.Runners["linux"].URL)
+	}
+}
+
+func TestResolveRunnerURL(t *testing.T) {
+	cfg := &Config{URL: "https://github.com/global"}
+
+	t.Run("runner override", func(t *testing.T) {
+		runner := &RunnerConfig{URL: "https://github.com/override"}
+		url, err := ResolveRunnerURL("", cfg, runner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if url != "https://github.com/override" {
+			t.Errorf("expected override URL, got %s", url)
+		}
+	})
+
+	t.Run("falls back to global", func(t *testing.T) {
+		runner := &RunnerConfig{}
+		url, err := ResolveRunnerURL("", cfg, runner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if url != "https://github.com/global" {
+			t.Errorf("expected global URL, got %s", url)
+		}
+	})
+
+	t.Run("runner URL beats flag", func(t *testing.T) {
+		runner := &RunnerConfig{URL: "https://github.com/override"}
+		url, err := ResolveRunnerURL("https://github.com/flag", cfg, runner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if url != "https://github.com/override" {
+			t.Errorf("expected runner URL to take precedence over flag, got %s", url)
+		}
+	})
+}
+
+func TestResolveRunnerToken(t *testing.T) {
+	t.Run("runner token_file override", func(t *testing.T) {
+		dir := t.TempDir()
+		tokenPath := filepath.Join(dir, "token")
+		if err := os.WriteFile(tokenPath, []byte("runner-token\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("GITHUB_TOKEN", "env-token")
+
+		runner := &RunnerConfig{TokenFile: tokenPath}
+		token, err := ResolveRunnerToken("flag-token", &Config{}, runner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "runner-token" {
+			t.Errorf("expected runner-token, got %s", token)
+		}
+	})
+
+	t.Run("falls back to global chain", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "env-token")
+		runner := &RunnerConfig{}
+		token, err := ResolveRunnerToken("", &Config{}, runner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "env-token" {
+			t.Errorf("expected env-token, got %s", token)
 		}
 	})
 }

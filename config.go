@@ -19,7 +19,11 @@ type Config struct {
 // RunnerConfig defines a runner environment and the scale set it registers.
 // The map key in Config.Runners is used as the scale set name.
 // Exactly one of Docker, Libvirt, or Tart must be set.
+// URL and TokenFile are optional per-runner overrides; when empty the global
+// Config values are used.
 type RunnerConfig struct {
+	URL        string        `yaml:"url,omitempty"`
+	TokenFile  string        `yaml:"token_file,omitempty"`
 	Labels     []string      `yaml:"labels"`
 	MaxRunners int           `yaml:"max_runners,omitempty"`
 	Docker     *DockerImage  `yaml:"docker,omitempty"`
@@ -187,4 +191,27 @@ func ResolveURL(flagURL string, cfg *Config) (string, error) {
 		return cfg.URL, nil
 	}
 	return "", fmt.Errorf("no URL provided (use --url flag or url in config)")
+}
+
+// ResolveRunnerURL returns the effective URL for a runner: the runner's own
+// URL if set, otherwise the global URL resolved via ResolveURL.
+func ResolveRunnerURL(flagURL string, cfg *Config, runner *RunnerConfig) (string, error) {
+	if runner.URL != "" {
+		return runner.URL, nil
+	}
+	return ResolveURL(flagURL, cfg)
+}
+
+// ResolveRunnerToken returns the effective token for a runner: if the runner
+// has its own token_file it is read directly; otherwise the global token
+// resolution chain is used.
+func ResolveRunnerToken(flagToken string, cfg *Config, runner *RunnerConfig) (string, error) {
+	if runner.TokenFile != "" {
+		data, err := os.ReadFile(runner.TokenFile)
+		if err != nil {
+			return "", fmt.Errorf("read runner token_file %q: %w", runner.TokenFile, err)
+		}
+		return strings.TrimSpace(string(data)), nil
+	}
+	return ResolveToken(flagToken, cfg)
 }

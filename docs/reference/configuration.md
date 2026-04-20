@@ -5,11 +5,13 @@ outrunner uses a YAML configuration file. Default location: `/etc/outrunner/conf
 ## Schema
 
 ```yaml
-url: <string>                        # Repository or org URL.
-token_file: <string>                 # Path to a file containing the GitHub token.
+url: <string>                        # Global repository or org URL.
+token_file: <string>                 # Global path to a file containing the GitHub token.
 
 runners:
   <scale-set-name>:                  # The key becomes the GitHub scale set name.
+    url: <string>                    # Optional per-runner URL override.
+    token_file: <string>             # Optional per-runner token file override.
     labels: [<string>, ...]          # Labels registered on this scale set.
     max_runners: <int>               # Optional. Defaults to --max-runners flag.
     docker:                          # Use Docker backend.
@@ -42,7 +44,9 @@ runners:
 
 ### `url`
 
-Repository or organization URL. Can also be set via the `--url` CLI flag (which takes precedence).
+Global repository or organization URL. Applies to all runners that don't set their own `url`. Can also be set via the `--url` CLI flag (which takes precedence over this value).
+
+Every runner must have a URL reachable via the resolution chain: per-runner `url`, `--url` flag, or this global field.
 
 ```yaml
 url: https://github.com/myorg/myrepo
@@ -50,17 +54,18 @@ url: https://github.com/myorg/myrepo
 
 ### `token_file`
 
-Path to a file containing the GitHub PAT. The file should contain just the token, with optional trailing whitespace/newline.
+Global path to a file containing the GitHub PAT. The file should contain just the token, with optional trailing whitespace/newline. Applies to all runners that don't set their own `token_file`.
 
 ```yaml
 token_file: /etc/outrunner/token
 ```
 
 Token resolution precedence:
-1. `--token` CLI flag
-2. `GITHUB_TOKEN` environment variable
-3. `$CREDENTIALS_DIRECTORY/github-token` (systemd-creds)
-4. `token_file` from config
+1. Per-runner `token_file` (if set on the runner)
+2. `--token` CLI flag
+3. `GITHUB_TOKEN` environment variable
+4. `$CREDENTIALS_DIRECTORY/github-token` (systemd-creds)
+5. Global `token_file` from config
 
 See the [Linux setup guides](../setup/linux-deb.md) for details on each method.
 
@@ -69,6 +74,23 @@ See the [Linux setup guides](../setup/linux-deb.md) for details on each method.
 ### `runners.<name>`
 
 **Required.** The map key becomes the name of the GitHub scale set. It is also used as a prefix for runner names and orphan cleanup. Each runner must specify exactly one of `docker`, `libvirt`, or `tart`.
+
+### `runners.<name>.url`
+
+**Optional.** Per-runner URL override. When set, this runner registers its scale set against this repository or organization instead of the global `url`. This enables a single outrunner instance to serve multiple repositories.
+
+```yaml
+runners:
+  repo-b-linux:
+    url: https://github.com/myorg/repo-b
+    labels: [self-hosted, linux]
+    docker:
+      image: runner:latest
+```
+
+### `runners.<name>.token_file`
+
+**Optional.** Per-runner token file override. When set, this runner authenticates with the token from this file instead of the global token resolution chain. Useful when different repositories require different PATs.
 
 ### `runners.<name>.labels`
 
@@ -206,4 +228,44 @@ runners:
       mounts:
         - name: vcpkg
           source: /var/cache/vcpkg
+```
+
+Multi-repo (runners targeting different repositories):
+
+```yaml
+url: https://github.com/myorg/main-repo
+token_file: /etc/outrunner/token
+
+runners:
+  main-linux:
+    labels: [self-hosted, linux]
+    docker:
+      image: runner:latest
+
+  # This runner targets a different repo, with its own token.
+  infra-linux:
+    url: https://github.com/myorg/infra-repo
+    token_file: /etc/outrunner/token-infra
+    labels: [self-hosted, linux]
+    docker:
+      image: runner:latest
+```
+
+Multi-repo without a global URL (every runner specifies its own):
+
+```yaml
+token_file: /etc/outrunner/token
+
+runners:
+  repo-a:
+    url: https://github.com/myorg/repo-a
+    labels: [self-hosted, linux]
+    docker:
+      image: runner:latest
+
+  repo-b:
+    url: https://github.com/myorg/repo-b
+    labels: [self-hosted, linux]
+    docker:
+      image: runner:latest
 ```

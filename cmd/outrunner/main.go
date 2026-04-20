@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"time"
 
 	outrunner "github.com/NetwindHQ/gha-outrunner"
@@ -75,32 +76,66 @@ func run(ctx context.Context) error {
 	}
 	logger.Info("Loaded config", slog.Int("runners", len(config.Runners)))
 
-	url, err := outrunner.ResolveURL(cfg.URL, config)
-	if err != nil {
-		return err
-	}
+	// Resolve (url, token) per runner and deduplicate clients.
+	type clientKey struct{ url, token string }
+	clients := make(map[clientKey]*scaleset.Client)
 
-	token, err := outrunner.ResolveToken(cfg.Token, config)
-	if err != nil {
-		return err
+	type resolvedRunner struct {
+		name       string
+		runner     outrunner.RunnerConfig
+		maxRunners int
+		key        clientKey
 	}
+	var resolved []resolvedRunner
 
-	client, err := scaleset.NewClientWithPersonalAccessToken(scaleset.NewClientWithPersonalAccessTokenConfig{
-		GitHubConfigURL:     url,
-		PersonalAccessToken: token,
-	})
-	if err != nil {
-		return fmt.Errorf("create scaleset client: %w", err)
+	names := make([]string, 0, len(config.Runners))
+	for name := range config.Runners {
+		names = append(names, name)
 	}
+	slices.Sort(names)
 
-	g, ctx := errgroup.WithContext(ctx)
-	for name, runner := range config.Runners {
+	for _, name := range names {
+		runner := config.Runners[name]
+		url, err := outrunner.ResolveRunnerURL(cfg.URL, config, &runner)
+		if err != nil {
+			return fmt.Errorf("runner %s: %w", name, err)
+		}
+		token, err := outrunner.ResolveRunnerToken(cfg.Token, config, &runner)
+		if err != nil {
+			return fmt.Errorf("runner %s: %w", name, err)
+		}
+
 		maxRunners := runner.MaxRunners
 		if maxRunners == 0 {
 			maxRunners = cfg.MaxRunners
 		}
+
+		key := clientKey{url: url, token: token}
+		if _, ok := clients[key]; !ok {
+			c, err := scaleset.NewClientWithPersonalAccessToken(scaleset.NewClientWithPersonalAccessTokenConfig{
+				GitHubConfigURL:     url,
+				PersonalAccessToken: token,
+			})
+			if err != nil {
+				return fmt.Errorf("runner %s: create scaleset client: %w", name, err)
+			}
+			clients[key] = c
+			logger.Info("Created scaleset client", slog.String("url", url))
+		}
+
+		resolved = append(resolved, resolvedRunner{
+			name:       name,
+			runner:     runner,
+			maxRunners: maxRunners,
+			key:        key,
+		})
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	for _, r := range resolved {
+		client := clients[r.key]
 		g.Go(func() error {
-			return runWorker(ctx, logger, listenerLogger, client, name, &runner, maxRunners)
+			return runWorker(ctx, logger, listenerLogger, client, r.name, &r.runner, r.maxRunners)
 		})
 	}
 
