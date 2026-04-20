@@ -22,8 +22,16 @@ token_file: /etc/outrunner/token
 
 # Uncomment and adjust the runners section below.
 # Each entry creates a scale set that GitHub routes jobs to based on labels.
+# Runners inherit the global url and token_file above. To target a different
+# repository, set url (and optionally token_file) on the runner directly.
 # runners:
 #   linux:
+#     labels: [self-hosted, linux]
+#     docker:
+#       image: ghcr.io/actions/actions-runner:latest
+#   # Example: runner targeting a different repo
+#   other-repo:
+#     url: https://github.com/your-org/other-repo
 #     labels: [self-hosted, linux]
 #     docker:
 #       image: ghcr.io/actions/actions-runner:latest

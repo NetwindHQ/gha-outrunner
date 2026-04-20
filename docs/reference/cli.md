@@ -35,20 +35,29 @@ outrunner registers a GitHub Actions [scale set](https://github.com/actions/scal
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--config` | string | `/etc/outrunner/config.yml` | Config file path. |
-| `--url` | string | | Repository or org URL. Overrides `url` in config. |
-| `--token` | string | | GitHub PAT. Overrides env var and config. |
+| `--url` | string | | Default repository or org URL. Overrides global `url` in config. Per-runner `url` overrides take precedence. |
+| `--token` | string | | GitHub PAT. Overrides env var and global config. Per-runner `token_file` overrides take precedence. |
 | `--max-runners` | int | `2` | Default max concurrent runners per scale set. |
 | `-h`, `--help` | | | Show help. |
 | `-v`, `--version` | | | Print version. |
 
 ## Token Resolution
 
-The GitHub token is resolved in this order:
+The GitHub token is resolved in this order (per runner):
 
-1. `--token` CLI flag
-2. `GITHUB_TOKEN` environment variable
-3. `$CREDENTIALS_DIRECTORY/github-token` (systemd-creds)
-4. `token_file` in config file
+1. Per-runner `token_file` (if set on the runner in config)
+2. `--token` CLI flag
+3. `GITHUB_TOKEN` environment variable
+4. `$CREDENTIALS_DIRECTORY/github-token` (systemd-creds)
+5. Global `token_file` in config file
+
+## URL Resolution
+
+The GitHub URL is resolved in this order (per runner):
+
+1. Per-runner `url` (if set on the runner in config)
+2. `--url` CLI flag
+3. Global `url` in config file
 
 For production deployments, use systemd-creds (encrypted at rest) or an environment file. See the [setup guides](../setup/).
 
