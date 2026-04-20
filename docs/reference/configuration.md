@@ -46,7 +46,7 @@ runners:
 
 Global repository or organization URL. Applies to all runners that don't set their own `url`. Can also be set via the `--url` CLI flag (which takes precedence over this value).
 
-Every runner must have a URL — either from this global field, the `--url` flag, or a per-runner `url` override.
+Every runner must have a URL reachable via the resolution chain: per-runner `url`, `--url` flag, or this global field.
 
 ```yaml
 url: https://github.com/myorg/myrepo

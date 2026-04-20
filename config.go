@@ -117,10 +117,6 @@ func LoadConfig(path string) (*Config, error) {
 		if runner.ProviderType() == "" {
 			return nil, fmt.Errorf("runner %q: must specify docker, libvirt, or tart", name)
 		}
-		if cfg.URL == "" && runner.URL == "" {
-			return nil, fmt.Errorf("runner %q: no url (set a global url or a per-runner url)", name)
-		}
-
 		// Apply defaults for libvirt runners
 		if runner.Libvirt != nil {
 			if runner.Libvirt.CPUs == 0 {

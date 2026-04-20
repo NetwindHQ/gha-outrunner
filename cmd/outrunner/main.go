@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"time"
 
 	outrunner "github.com/NetwindHQ/gha-outrunner"
@@ -87,7 +88,14 @@ func run(ctx context.Context) error {
 	}
 	var resolved []resolvedRunner
 
-	for name, runner := range config.Runners {
+	names := make([]string, 0, len(config.Runners))
+	for name := range config.Runners {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+
+	for _, name := range names {
+		runner := config.Runners[name]
 		url, err := outrunner.ResolveRunnerURL(cfg.URL, config, &runner)
 		if err != nil {
 			return fmt.Errorf("runner %s: %w", name, err)

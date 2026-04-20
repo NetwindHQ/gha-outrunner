@@ -536,12 +536,18 @@ func TestLoadConfigNoURLAnywhere(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := LoadConfig(path)
-	if err == nil {
-		t.Fatal("expected error when no URL is set globally or per-runner")
+	// LoadConfig should succeed — URL validation happens at resolve time
+	// so that --url flag users are not broken.
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
 	}
-	if !strings.Contains(err.Error(), "no url") {
-		t.Errorf("expected 'no url' in error, got %q", err)
+
+	// But resolving the URL without a flag should fail.
+	runner := cfg.Runners["linux"]
+	_, err = ResolveRunnerURL("", cfg, &runner)
+	if err == nil {
+		t.Fatal("expected error when no URL is set globally, per-runner, or via flag")
 	}
 }
 
@@ -602,7 +608,7 @@ func TestResolveRunnerURL(t *testing.T) {
 		}
 	})
 
-	t.Run("flag beats everything", func(t *testing.T) {
+	t.Run("runner URL beats flag", func(t *testing.T) {
 		runner := &RunnerConfig{URL: "https://github.com/override"}
 		url, err := ResolveRunnerURL("https://github.com/flag", cfg, runner)
 		if err != nil {
