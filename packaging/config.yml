@@ -20,6 +20,9 @@ url: https://github.com/your-org/your-repo
 #   sudo chmod 600 /etc/outrunner/token && sudo chown outrunner:outrunner /etc/outrunner/token
 token_file: /etc/outrunner/token
 
+# Optional: target a GitHub Actions runner group by its positive ID. Defaults to 1.
+# Find organization IDs with: gh api orgs/ORG/actions/runner-groups
+# runner_group_id: 4
 # Uncomment and adjust the runners section below.
 # Each entry creates a scale set that GitHub routes jobs to based on labels.
 # Runners inherit the global url and token_file above. To target a different
@@ -32,6 +35,7 @@ token_file: /etc/outrunner/token
 #   # Example: runner targeting a different repo
 #   other-repo:
 #     url: https://github.com/your-org/other-repo
+#     runner_group_id: 7  # Optional per-runner override of the global group ID.
 #     labels: [self-hosted, linux]
 #     docker:
 #       image: ghcr.io/actions/actions-runner:latest

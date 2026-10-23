@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Configure a global GitHub runner group ID with an optional per-runner override; omitted IDs default to group `1`.
+
 ## [1.2.0] - 2026-04-20
 
 ### Features

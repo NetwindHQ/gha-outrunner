@@ -144,6 +144,17 @@ runners:
 	if runner.Tart.MemoryMB != 8192 {
 		t.Errorf("expected default memory 8192, got %d", runner.Tart.MemoryMB)
 	}
+	if cfg.RunnerGroupID != nil {
+		t.Errorf("default runner_group_id = %d, want unset", *cfg.RunnerGroupID)
+	}
+	groupID, err := ResolveRunnerGroupID(cfg, &runner)
+	if err != nil {
+		t.Fatalf("ResolveRunnerGroupID: %v", err)
+	}
+	if groupID != 1 {
+		t.Errorf("default runner group ID = %d, want 1", groupID)
+	}
+
 }
 
 func TestLoadConfigCustomValues(t *testing.T) {
@@ -174,6 +185,36 @@ runners:
 	}
 	if runner.Libvirt.MemoryMB != 32768 {
 		t.Errorf("expected memory 32768, got %d", runner.Libvirt.MemoryMB)
+	}
+}
+
+func TestLoadConfigPerRunnerGroupID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	content := `runner_group_id: 4
+runners:
+  linux:
+    runner_group_id: 7
+    labels: [linux]
+    docker:
+      image: runner:latest
+`
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	runner := cfg.Runners["linux"]
+	if runner.RunnerGroupID == nil || *runner.RunnerGroupID != 7 {
+		t.Fatalf("loaded per-runner runner_group_id = %v, want 7", runner.RunnerGroupID)
+	}
+	groupID, err := ResolveRunnerGroupID(cfg, &runner)
+	if err != nil {
+		t.Fatalf("ResolveRunnerGroupID: %v", err)
+	}
+	if groupID != 7 {
+		t.Errorf("resolved runner group ID = %d, want per-runner override 7", groupID)
 	}
 }
 
@@ -669,6 +710,62 @@ func TestProviderType(t *testing.T) {
 			got := tt.runner.ProviderType()
 			if got != tt.want {
 				t.Errorf("ProviderType() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveRunnerGroupID(t *testing.T) {
+	intPointer := func(value int) *int { return &value }
+	tests := []struct {
+		name    string
+		config  *Config
+		runner  *RunnerConfig
+		want    int
+		wantErr bool
+	}{
+		{name: "default", config: &Config{}, runner: &RunnerConfig{}, want: 1},
+		{name: "global", config: &Config{RunnerGroupID: intPointer(42)}, runner: &RunnerConfig{}, want: 42},
+		{name: "per-runner override", config: &Config{RunnerGroupID: intPointer(42)}, runner: &RunnerConfig{RunnerGroupID: intPointer(17)}, want: 17},
+		{name: "explicit zero", config: &Config{}, runner: &RunnerConfig{RunnerGroupID: intPointer(0)}, wantErr: true},
+		{name: "negative global ID", config: &Config{RunnerGroupID: intPointer(-2)}, runner: &RunnerConfig{RunnerGroupID: intPointer(17)}, wantErr: true},
+		{name: "negative per-runner ID", config: &Config{}, runner: &RunnerConfig{RunnerGroupID: intPointer(-2)}, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveRunnerGroupID(tt.config, tt.runner)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ResolveRunnerGroupID: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("ResolveRunnerGroupID() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoadConfigRunnerGroupIDValidation(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		yaml string
+	}{
+		{name: "global zero", yaml: "runner_group_id: 0\nrunners:\n  linux:\n    labels: [linux]\n    docker:\n      image: runner:latest\n"},
+		{name: "per-runner negative", yaml: "runners:\n  linux:\n    runner_group_id: -1\n    labels: [linux]\n    docker:\n      image: runner:latest\n"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yml")
+			if err := os.WriteFile(path, []byte(tt.yaml), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := LoadConfig(path); err == nil {
+				t.Fatal("expected invalid runner group ID error")
 			}
 		})
 	}

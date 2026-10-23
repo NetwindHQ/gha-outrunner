@@ -7,11 +7,12 @@ outrunner uses a YAML configuration file. Default location: `/etc/outrunner/conf
 ```yaml
 url: <string>                        # Global repository or org URL.
 token_file: <string>                 # Global path to a file containing the GitHub token.
-
+runner_group_id: <int>               # Optional positive GitHub runner group ID; defaults to 1.
 runners:
   <scale-set-name>:                  # The key becomes the GitHub scale set name.
     url: <string>                    # Optional per-runner URL override.
     token_file: <string>             # Optional per-runner token file override.
+    runner_group_id: <int>           # Optional positive runner group ID override.
     labels: [<string>, ...]          # Labels registered on this scale set.
     max_runners: <int>               # Optional. Defaults to --max-runners flag.
     docker:                          # Use Docker backend.
@@ -69,6 +70,22 @@ Token resolution precedence:
 
 See the [Linux setup guides](../setup/linux-deb.md) for details on each method.
 
+### `runner_group_id`
+
+**Optional.** Positive GitHub Actions runner group ID. The top-level value applies to all runners unless a runner sets its own `runner_group_id`; the default when neither is set is `1`. Explicit zero and negative IDs are rejected. This selects the Actions runner group for the scale set and is independent of outrunner's local runner resource and concurrency configuration.
+
+Find organization runner group IDs with `gh api orgs/ORG/actions/runner-groups` (replace `ORG` with your organization). This command is provided for reference only; outrunner does not run it or discover groups automatically.
+
+```yaml
+runner_group_id: 4
+runners:
+  linux:
+    runner_group_id: 7
+    labels: [self-hosted, linux]
+    docker:
+      image: runner:latest
+```
+
 ## Runner Fields
 
 ### `runners.<name>`
@@ -91,6 +108,10 @@ runners:
 ### `runners.<name>.token_file`
 
 **Optional.** Per-runner token file override. When set, this runner authenticates with the token from this file instead of the global token resolution chain. Useful when different repositories require different PATs.
+
+### `runners.<name>.runner_group_id`
+
+**Optional.** Positive GitHub Actions runner group ID for this scale set. Overrides the top-level `runner_group_id`; if neither is configured, outrunner uses group `1`. Zero and negative values are rejected.
 
 ### `runners.<name>.labels`
 
@@ -182,6 +203,7 @@ Minimal (Docker, single runner):
 ```yaml
 url: https://github.com/myorg/myrepo
 token_file: /etc/outrunner/token
+runner_group_id: 4
 
 runners:
   linux:

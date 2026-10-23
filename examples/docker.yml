@@ -2,6 +2,9 @@
 # Build the runner image: docker build -t outrunner-runner runner/
 url: https://github.com/your-org/your-repo
 # token_file: /etc/outrunner/token
+# Optional global GitHub Actions runner group ID; defaults to group 1.
+# Find organization IDs with: gh api orgs/ORG/actions/runner-groups
+# runner_group_id: 4
 
 runners:
   linux:

@@ -81,10 +81,11 @@ func run(ctx context.Context) error {
 	clients := make(map[clientKey]*scaleset.Client)
 
 	type resolvedRunner struct {
-		name       string
-		runner     outrunner.RunnerConfig
-		maxRunners int
-		key        clientKey
+		name          string
+		runner        outrunner.RunnerConfig
+		maxRunners    int
+		runnerGroupID int
+		key           clientKey
 	}
 	var resolved []resolvedRunner
 
@@ -101,6 +102,10 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("runner %s: %w", name, err)
 		}
 		token, err := outrunner.ResolveRunnerToken(cfg.Token, config, &runner)
+		if err != nil {
+			return fmt.Errorf("runner %s: %w", name, err)
+		}
+		runnerGroupID, err := outrunner.ResolveRunnerGroupID(config, &runner)
 		if err != nil {
 			return fmt.Errorf("runner %s: %w", name, err)
 		}
@@ -124,10 +129,11 @@ func run(ctx context.Context) error {
 		}
 
 		resolved = append(resolved, resolvedRunner{
-			name:       name,
-			runner:     runner,
-			maxRunners: maxRunners,
-			key:        key,
+			name:          name,
+			runner:        runner,
+			maxRunners:    maxRunners,
+			runnerGroupID: runnerGroupID,
+			key:           key,
 		})
 	}
 
@@ -135,7 +141,7 @@ func run(ctx context.Context) error {
 	for _, r := range resolved {
 		client := clients[r.key]
 		g.Go(func() error {
-			return runWorker(ctx, logger, listenerLogger, client, r.name, &r.runner, r.maxRunners)
+			return runWorker(ctx, logger, listenerLogger, client, r.name, &r.runner, r.maxRunners, r.runnerGroupID)
 		})
 	}
 
@@ -148,7 +154,7 @@ func run(ctx context.Context) error {
 	return nil
 }
 
-func runWorker(ctx context.Context, logger, listenerLogger *slog.Logger, client *scaleset.Client, name string, runner *outrunner.RunnerConfig, maxRunners int) error {
+func runWorker(ctx context.Context, logger, listenerLogger *slog.Logger, client *scaleset.Client, name string, runner *outrunner.RunnerConfig, maxRunners, runnerGroupID int) error {
 	logger = logger.With(slog.String("scaleSet", name))
 
 	// Create provisioner
@@ -169,30 +175,9 @@ func runWorker(ctx context.Context, logger, listenerLogger *slog.Logger, client 
 
 	// Get or create scale set
 	logger.Info("Looking for scale set")
-	scaleSet, err := client.GetRunnerScaleSet(ctx, 1, name)
+	scaleSet, err := getOrCreateScaleSet(ctx, logger, client, runnerGroupID, name, labels)
 	if err != nil {
-		return fmt.Errorf("runner %s: get scale set: %w", name, err)
-	}
-	if scaleSet == nil {
-		logger.Info("Creating scale set")
-		scaleSet, err = client.CreateRunnerScaleSet(ctx, &scaleset.RunnerScaleSet{
-			Name:          name,
-			RunnerGroupID: 1,
-			Labels:        labels,
-			RunnerSetting: scaleset.RunnerSetting{
-				DisableUpdate: true,
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("runner %s: create scale set: %w", name, err)
-		}
-	} else if !labelsMatch(scaleSet.Labels, labels) {
-		logger.Info("Updating scale set labels")
-		scaleSet.Labels = labels
-		scaleSet, err = client.UpdateRunnerScaleSet(ctx, scaleSet.ID, scaleSet)
-		if err != nil {
-			return fmt.Errorf("runner %s: update scale set labels: %w", name, err)
-		}
+		return fmt.Errorf("runner %s: %w", name, err)
 	}
 	logger.Info("Scale set ready", slog.Int("id", scaleSet.ID))
 
@@ -252,6 +237,37 @@ func createProvisioner(logger *slog.Logger, runner *outrunner.RunnerConfig) (out
 	default:
 		return nil, fmt.Errorf("unknown provider type %q", runner.ProviderType())
 	}
+}
+
+func getOrCreateScaleSet(ctx context.Context, logger *slog.Logger, client *scaleset.Client, runnerGroupID int, name string, labels []scaleset.Label) (*scaleset.RunnerScaleSet, error) {
+	scaleSet, err := client.GetRunnerScaleSet(ctx, runnerGroupID, name)
+	if err != nil {
+		return nil, fmt.Errorf("get scale set: %w", err)
+	}
+	if scaleSet == nil {
+		logger.Info("Creating scale set")
+		scaleSet, err = client.CreateRunnerScaleSet(ctx, &scaleset.RunnerScaleSet{
+			Name:          name,
+			RunnerGroupID: runnerGroupID,
+			Labels:        labels,
+			RunnerSetting: scaleset.RunnerSetting{
+				DisableUpdate: true,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create scale set: %w", err)
+		}
+		return scaleSet, nil
+	}
+	if !labelsMatch(scaleSet.Labels, labels) {
+		logger.Info("Updating scale set labels")
+		scaleSet.Labels = labels
+		scaleSet, err = client.UpdateRunnerScaleSet(ctx, scaleSet.ID, scaleSet)
+		if err != nil {
+			return nil, fmt.Errorf("update scale set labels: %w", err)
+		}
+	}
+	return scaleSet, nil
 }
 
 // labelsMatch checks if the existing scale set labels match the desired labels.

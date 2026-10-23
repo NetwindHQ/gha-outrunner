@@ -11,24 +11,26 @@ import (
 
 // Config is the outrunner configuration file format.
 type Config struct {
-	URL       string                  `yaml:"url"`
-	TokenFile string                  `yaml:"token_file"`
-	Runners   map[string]RunnerConfig `yaml:"runners"`
+	URL           string                  `yaml:"url"`
+	TokenFile     string                  `yaml:"token_file"`
+	RunnerGroupID *int                    `yaml:"runner_group_id,omitempty"`
+	Runners       map[string]RunnerConfig `yaml:"runners"`
 }
 
 // RunnerConfig defines a runner environment and the scale set it registers.
 // The map key in Config.Runners is used as the scale set name.
 // Exactly one of Docker, Libvirt, or Tart must be set.
-// URL and TokenFile are optional per-runner overrides; when empty the global
+// URL, TokenFile, and RunnerGroupID are optional per-runner overrides; when unset, the global
 // Config values are used.
 type RunnerConfig struct {
-	URL        string        `yaml:"url,omitempty"`
-	TokenFile  string        `yaml:"token_file,omitempty"`
-	Labels     []string      `yaml:"labels"`
-	MaxRunners int           `yaml:"max_runners,omitempty"`
-	Docker     *DockerImage  `yaml:"docker,omitempty"`
-	Libvirt    *LibvirtImage `yaml:"libvirt,omitempty"`
-	Tart       *TartImage    `yaml:"tart,omitempty"`
+	URL           string        `yaml:"url,omitempty"`
+	TokenFile     string        `yaml:"token_file,omitempty"`
+	RunnerGroupID *int          `yaml:"runner_group_id,omitempty"`
+	Labels        []string      `yaml:"labels"`
+	MaxRunners    int           `yaml:"max_runners,omitempty"`
+	Docker        *DockerImage  `yaml:"docker,omitempty"`
+	Libvirt       *LibvirtImage `yaml:"libvirt,omitempty"`
+	Tart          *TartImage    `yaml:"tart,omitempty"`
 }
 
 // DockerMount defines a bind mount for a Docker container.
@@ -105,12 +107,17 @@ func LoadConfig(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-
+	if cfg.RunnerGroupID != nil && *cfg.RunnerGroupID <= 0 {
+		return nil, fmt.Errorf("runner group ID must be positive, got %d", *cfg.RunnerGroupID)
+	}
 	if len(cfg.Runners) == 0 {
 		return nil, fmt.Errorf("no runners configured (uncomment the runners section in %s)", path)
 	}
 
 	for name, runner := range cfg.Runners {
+		if runner.RunnerGroupID != nil && *runner.RunnerGroupID <= 0 {
+			return nil, fmt.Errorf("runner %q: runner group ID must be positive, got %d", name, *runner.RunnerGroupID)
+		}
 		if len(runner.Labels) == 0 {
 			return nil, fmt.Errorf("runner %q: labels are required", name)
 		}
@@ -214,4 +221,23 @@ func ResolveRunnerToken(flagToken string, cfg *Config, runner *RunnerConfig) (st
 		return strings.TrimSpace(string(data)), nil
 	}
 	return ResolveToken(flagToken, cfg)
+}
+
+// ResolveRunnerGroupID returns the effective runner group ID for a runner.
+// A per-runner value overrides the global value; the default is 1.
+// Explicit IDs must be positive.
+func ResolveRunnerGroupID(cfg *Config, runner *RunnerConfig) (int, error) {
+	if cfg.RunnerGroupID != nil && *cfg.RunnerGroupID <= 0 {
+		return 0, fmt.Errorf("runner group ID must be positive, got %d", *cfg.RunnerGroupID)
+	}
+	if runner.RunnerGroupID != nil && *runner.RunnerGroupID <= 0 {
+		return 0, fmt.Errorf("runner group ID must be positive, got %d", *runner.RunnerGroupID)
+	}
+	if runner.RunnerGroupID != nil {
+		return *runner.RunnerGroupID, nil
+	}
+	if cfg.RunnerGroupID != nil {
+		return *cfg.RunnerGroupID, nil
+	}
+	return 1, nil
 }
