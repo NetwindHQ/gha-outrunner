@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- GitHub App authentication globally or per runner, with explicit PAT overrides and no silent fallback after App authentication failures.
+
 ## [1.2.0] - 2026-04-20
 
 ### Features

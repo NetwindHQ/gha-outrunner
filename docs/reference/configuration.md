@@ -6,12 +6,20 @@ outrunner uses a YAML configuration file. Default location: `/etc/outrunner/conf
 
 ```yaml
 url: <string>                        # Global repository or org URL.
+app:                                 # Optional GitHub App credentials.
+  client_id: <string>
+  installation_id: <positive int>
+  private_key_file: <path>
 token_file: <string>                 # Global path to a file containing the GitHub token.
 
 runners:
   <scale-set-name>:                  # The key becomes the GitHub scale set name.
     url: <string>                    # Optional per-runner URL override.
     token_file: <string>             # Optional per-runner token file override.
+    app:                            # Optional per-runner App override; conflicts with token_file.
+      client_id: <string>
+      installation_id: <positive int>
+      private_key_file: <path>
     labels: [<string>, ...]          # Labels registered on this scale set.
     max_runners: <int>               # Optional. Defaults to --max-runners flag.
     docker:                          # Use Docker backend.
@@ -52,6 +60,14 @@ Every runner must have a URL reachable via the resolution chain: per-runner `url
 url: https://github.com/myorg/myrepo
 ```
 
+### `app`
+
+Optional GitHub App authentication. Set `client_id` (App Client ID), a positive `installation_id`, and `private_key_file` pointing to a valid RSA PEM private key. App and installation IDs are distinct. Repository and organization scopes are supported; enterprise runner scopes require a PAT.
+
+A runner-level `app` overrides the global App. A runner-level `token_file` explicitly selects PAT authentication and cannot coexist with that runner's `app`. Otherwise the global App takes precedence over all PAT sources, including `--token` and `GITHUB_TOKEN`. Invalid or failed App authentication never falls back to PAT.
+
+Protect the PEM file with service-account ownership and mode `0600`; never put its contents in YAML, images, source control, or logs. Follow the [GitHub App setup guide](../setup/from-source.md#github-app-recommended) for permissions, installation IDs, and disabling unused webhooks.
+
 ### `token_file`
 
 Global path to a file containing the GitHub PAT. The file should contain just the token, with optional trailing whitespace/newline. Applies to all runners that don't set their own `token_file`.
@@ -60,7 +76,7 @@ Global path to a file containing the GitHub PAT. The file should contain just th
 token_file: /etc/outrunner/token
 ```
 
-Token resolution precedence:
+For runners without an effective App, PAT resolution precedence is:
 1. Per-runner `token_file` (if set on the runner)
 2. `--token` CLI flag
 3. `GITHUB_TOKEN` environment variable
@@ -91,6 +107,12 @@ runners:
 ### `runners.<name>.token_file`
 
 **Optional.** Per-runner token file override. When set, this runner authenticates with the token from this file instead of the global token resolution chain. Useful when different repositories require different PATs.
+
+A runner-level `token_file` also opts out of an inherited global App.
+
+### `runners.<name>.app`
+
+Optional complete App credential block overriding the global `app`; fields are not merged. It cannot coexist with a runner-level `token_file`.
 
 ### `runners.<name>.labels`
 

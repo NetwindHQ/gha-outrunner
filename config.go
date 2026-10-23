@@ -13,6 +13,7 @@ import (
 type Config struct {
 	URL       string                  `yaml:"url"`
 	TokenFile string                  `yaml:"token_file"`
+	App       *AppConfig              `yaml:"app,omitempty"`
 	Runners   map[string]RunnerConfig `yaml:"runners"`
 }
 
@@ -24,6 +25,7 @@ type Config struct {
 type RunnerConfig struct {
 	URL        string        `yaml:"url,omitempty"`
 	TokenFile  string        `yaml:"token_file,omitempty"`
+	App        *AppConfig    `yaml:"app,omitempty"`
 	Labels     []string      `yaml:"labels"`
 	MaxRunners int           `yaml:"max_runners,omitempty"`
 	Docker     *DockerImage  `yaml:"docker,omitempty"`
@@ -105,6 +107,11 @@ func LoadConfig(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	if cfg.App != nil {
+		if err := validateAppConfig(cfg.App); err != nil {
+			return nil, fmt.Errorf("app: %w", err)
+		}
+	}
 
 	if len(cfg.Runners) == 0 {
 		return nil, fmt.Errorf("no runners configured (uncomment the runners section in %s)", path)
@@ -116,6 +123,14 @@ func LoadConfig(path string) (*Config, error) {
 		}
 		if runner.ProviderType() == "" {
 			return nil, fmt.Errorf("runner %q: must specify docker, libvirt, or tart", name)
+		}
+		if runner.App != nil {
+			if err := validateAppConfig(runner.App); err != nil {
+				return nil, fmt.Errorf("runner %q app: %w", name, err)
+			}
+			if runner.TokenFile != "" {
+				return nil, fmt.Errorf("runner %q: app and token_file cannot both be set", name)
+			}
 		}
 
 		// Apply defaults for libvirt runners

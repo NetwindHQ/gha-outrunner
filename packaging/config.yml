@@ -9,7 +9,14 @@
 
 url: https://github.com/your-org/your-repo
 
-# Token is read from (in order of precedence):
+# Optional GitHub App authentication; takes precedence over ambient PAT sources.
+# Protect the private key with service-account ownership and mode 0600.
+# app:
+#   client_id: Iv1.your-client-id
+#   installation_id: 12345678
+#   private_key_file: /etc/outrunner/github-app.pem
+
+# PAT sources when no App is effective (a runner token_file explicitly selects PAT):
 # 1. --token CLI flag
 # 2. GITHUB_TOKEN environment variable (set in /etc/outrunner/env)
 # 3. systemd-creds ($CREDENTIALS_DIRECTORY/github-token)

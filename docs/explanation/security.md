@@ -11,6 +11,12 @@ outrunner requires a fine-grained Personal Access Token with **Administration re
 
 The PAT is read at startup and held in process memory. It is never passed to containers or injected into VMs. outrunner supports multiple token sources, including systemd-creds (encrypted at rest) to avoid storing the token in plaintext on disk. Protect the PAT as you would any credential with write access to your repository settings.
 
+### GitHub App
+
+outrunner also supports GitHub App authentication using the App Client ID, the installation ID for the target repository or organization, and an RSA PEM private key file. The App needs Actions Administration read/write permission at the corresponding repository or organization level. It requests short-lived installation access tokens from GitHub; outrunner never passes App credentials to runner containers or VMs. A configured App takes precedence over ambient PAT sources and does not fall back if App setup or authentication fails. Enterprise-level runner scopes require PAT authentication.
+
+Protect the PEM file with mode `0600`, owned by the outrunner service account; store it outside the repository and runner images, and rotate/revoke the App key if exposed. App Client ID, App ID, and installation ID are different identifiers; use the Client ID in `client_id` and the installation's ID in `installation_id`.
+
 ### JIT Configuration Tokens
 
 Each runner receives a JIT (just-in-time) configuration token via `--jitconfig`. This token:

@@ -11,6 +11,8 @@ brew install outrunner
 
 ## 2. Create a GitHub PAT
 
+For organization deployments, [GitHub App authentication](from-source.md#github-app-recommended) avoids a user-bound PAT. Follow that setup instead of steps 2–3, and use its `app` block when editing the configuration in step 4.
+
 Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta) and create a fine-grained token:
 
 - **Token name:** outrunner

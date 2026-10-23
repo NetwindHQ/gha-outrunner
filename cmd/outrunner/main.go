@@ -76,8 +76,8 @@ func run(ctx context.Context) error {
 	}
 	logger.Info("Loaded config", slog.Int("runners", len(config.Runners)))
 
-	// Resolve (url, token) per runner and deduplicate clients.
-	type clientKey struct{ url, token string }
+	// Resolve authentication per runner and deduplicate clients by credential identity.
+	type clientKey struct{ url, authIdentity string }
 	clients := make(map[clientKey]*scaleset.Client)
 
 	type resolvedRunner struct {
@@ -100,7 +100,7 @@ func run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("runner %s: %w", name, err)
 		}
-		token, err := outrunner.ResolveRunnerToken(cfg.Token, config, &runner)
+		auth, err := outrunner.ResolveRunnerAuth(cfg.Token, config, &runner)
 		if err != nil {
 			return fmt.Errorf("runner %s: %w", name, err)
 		}
@@ -110,12 +110,9 @@ func run(ctx context.Context) error {
 			maxRunners = cfg.MaxRunners
 		}
 
-		key := clientKey{url: url, token: token}
+		key := clientKey{url: url, authIdentity: auth.Identity}
 		if _, ok := clients[key]; !ok {
-			c, err := scaleset.NewClientWithPersonalAccessToken(scaleset.NewClientWithPersonalAccessTokenConfig{
-				GitHubConfigURL:     url,
-				PersonalAccessToken: token,
-			})
+			c, err := outrunner.NewScaleSetClient(url, auth)
 			if err != nil {
 				return fmt.Errorf("runner %s: create scaleset client: %w", name, err)
 			}
