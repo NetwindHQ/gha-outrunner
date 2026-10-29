@@ -82,9 +82,13 @@ func (p *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) e
 	overlayPath := filepath.Join(overlayDir, req.Name+".qcow2")
 
 	// 1. Create qcow2 overlay
-	p.logger.Debug("Creating overlay", slog.String("base", img.Path), slog.String("overlay", overlayPath))
+	basePath, err := resolveBasePath(img.Path)
+	if err != nil {
+		return err
+	}
+	p.logger.Debug("Creating overlay", slog.String("base", basePath), slog.String("overlay", overlayPath))
 	out, err := exec.CommandContext(ctx, "qemu-img", "create",
-		"-f", "qcow2", "-F", "qcow2", "-b", img.Path, overlayPath,
+		"-f", "qcow2", "-F", "qcow2", "-b", basePath, overlayPath,
 	).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("create overlay: %w: %s", err, out)
@@ -318,6 +322,17 @@ var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
     <console type='pty'/>
   </devices>
 </domain>`))
+
+// resolveBasePath follows symlinks in the base image path, so the overlay
+// records the image the link points to now. Repointing the link later only
+// affects new VMs.
+func resolveBasePath(path string) (string, error) {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve base image %s: %w", path, err)
+	}
+	return resolved, nil
+}
 
 func renderDomainXML(name, overlayPath string, img *outrunner.LibvirtImage, network string) (string, error) {
 	params := domainXMLParams{

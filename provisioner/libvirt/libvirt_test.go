@@ -3,6 +3,8 @@ package libvirt
 import (
 	"encoding/json"
 	"encoding/xml"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -152,5 +154,34 @@ func TestGuestExecResultParsing(t *testing.T) {
 				t.Errorf("expected PID %d, got %d", tt.wantPID, result.Return.PID)
 			}
 		})
+	}
+}
+
+func TestResolveBasePath(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "base-1.qcow2")
+	if err := os.WriteFile(base, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "base.qcow2")
+	if err := os.Symlink(base, link); err != nil {
+		t.Fatal(err)
+	}
+
+	// t.TempDir may itself be under a symlink (e.g. /var on macOS)
+	want, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := resolveBasePath(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+
+	if _, err := resolveBasePath(filepath.Join(dir, "missing.qcow2")); err == nil {
+		t.Error("expected error for missing base image")
 	}
 }
