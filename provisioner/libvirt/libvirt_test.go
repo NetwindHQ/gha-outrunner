@@ -52,6 +52,9 @@ func TestRenderDomainXML(t *testing.T) {
 				if !strings.Contains(xmlStr, "<vcpu>32</vcpu>") {
 					t.Error("expected 32 vcpus")
 				}
+				if !strings.Contains(xmlStr, "<topology sockets='1' cores='32' threads='1'/>") {
+					t.Error("expected 32 cores on one processor")
+				}
 				if !strings.Contains(xmlStr, "<memory unit='MiB'>65536</memory>") {
 					t.Error("expected 65536 MiB memory")
 				}

@@ -294,7 +294,9 @@ var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
     <acpi/>
     <apic/>
   </features>
-  <cpu mode='host-passthrough'/>
+  <cpu mode='host-passthrough'>
+    <topology sockets='1' cores='{{.CPUs}}' threads='1'/>
+  </cpu>
   <devices>
     <controller type='scsi' model='virtio-scsi'/>
     <disk type='file' device='disk'>
