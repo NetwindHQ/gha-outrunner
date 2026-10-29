@@ -54,6 +54,14 @@ type LibvirtMount struct {
 	Source string `yaml:"source"`
 }
 
+// LibvirtFirmware selects the UEFI firmware instead of libvirt autoselection,
+// which prefers Secure Boot builds. Each VM gets its own copy of the variables
+// template, stored beside its overlay.
+type LibvirtFirmware struct {
+	Path     string `yaml:"path"`
+	VarsPath string `yaml:"vars_path"`
+}
+
 // DockerImage configures a Docker-based runner.
 type DockerImage struct {
 	Image     string        `yaml:"image"`
@@ -63,12 +71,13 @@ type DockerImage struct {
 
 // LibvirtImage configures a libvirt/QEMU-based runner.
 type LibvirtImage struct {
-	Path      string        `yaml:"path"`
-	RunnerCmd string        `yaml:"runner_cmd"`
-	Socket    string        `yaml:"socket"`
-	CPUs      int           `yaml:"cpus"`
-	MemoryMB  int           `yaml:"memory"`
-	Mount     *LibvirtMount `yaml:"mount"`
+	Path      string           `yaml:"path"`
+	RunnerCmd string           `yaml:"runner_cmd"`
+	Socket    string           `yaml:"socket"`
+	CPUs      int              `yaml:"cpus"`
+	MemoryMB  int              `yaml:"memory"`
+	Mount     *LibvirtMount    `yaml:"mount"`
+	Firmware  *LibvirtFirmware `yaml:"firmware"`
 }
 
 // TartImage configures a Tart-based runner (macOS/Linux on Apple Silicon).
@@ -116,6 +125,12 @@ func LoadConfig(path string) (*Config, error) {
 		}
 		if runner.ProviderType() == "" {
 			return nil, fmt.Errorf("runner %q: must specify docker, libvirt, or tart", name)
+		}
+
+		if runner.Libvirt != nil && runner.Libvirt.Firmware != nil {
+			if fw := runner.Libvirt.Firmware; fw.Path == "" || fw.VarsPath == "" {
+				return nil, fmt.Errorf("runner %q: libvirt firmware requires path and vars_path", name)
+			}
 		}
 
 		// Apply defaults for libvirt runners

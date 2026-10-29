@@ -75,6 +75,42 @@ func TestRenderDomainXML(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:    "default firmware",
+			vmName:  "autoselect",
+			overlay: "/tmp/autoselect.qcow2",
+			img:     &outrunner.LibvirtImage{CPUs: 4, MemoryMB: 8192},
+			network: "default",
+			check: func(t *testing.T, xmlStr string) {
+				if !strings.Contains(xmlStr, "firmware='efi'") {
+					t.Error("expected firmware autoselection by default")
+				}
+			},
+		},
+		{
+			name:    "explicit firmware",
+			vmName:  "testsigning",
+			overlay: "/tmp/testsigning.qcow2",
+			img: &outrunner.LibvirtImage{
+				CPUs: 4, MemoryMB: 8192,
+				Firmware: &outrunner.LibvirtFirmware{
+					Path:     "/usr/share/OVMF/OVMF_CODE_4M.fd",
+					VarsPath: "/usr/share/OVMF/OVMF_VARS_4M.fd",
+				},
+			},
+			network: "default",
+			check: func(t *testing.T, xmlStr string) {
+				if strings.Contains(xmlStr, "firmware='efi'") {
+					t.Error("explicit firmware must disable autoselection")
+				}
+				if !strings.Contains(xmlStr, "<loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE_4M.fd</loader>") {
+					t.Error("missing loader")
+				}
+				if !strings.Contains(xmlStr, "<nvram template='/usr/share/OVMF/OVMF_VARS_4M.fd'>/tmp/testsigning.fd</nvram>") {
+					t.Error("missing nvram beside the overlay")
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

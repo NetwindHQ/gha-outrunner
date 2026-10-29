@@ -99,6 +99,28 @@ func TestLoadConfigMissingProvider(t *testing.T) {
 	}
 }
 
+func TestLoadConfigFirmwareMissingVarsPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yml")
+
+	content := `runners:
+  windows:
+    labels: [windows]
+    libvirt:
+      path: /images/win.qcow2
+      firmware:
+        path: /usr/share/OVMF/OVMF_CODE_4M.fd
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadConfig(path)
+	if err == nil {
+		t.Fatal("expected error for firmware without vars_path")
+	}
+}
+
 func TestLoadConfigNoRunners(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")

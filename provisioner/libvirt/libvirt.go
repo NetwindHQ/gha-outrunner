@@ -110,6 +110,7 @@ func (p *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) e
 	if err := p.waitForAgent(ctx, dom, 3*time.Minute); err != nil {
 		p.destroyDomain(req.Name)
 		_ = os.Remove(overlayPath)
+		_ = os.Remove(nvramPath(overlayPath))
 		return fmt.Errorf("guest agent not ready: %w", err)
 	}
 
@@ -128,6 +129,7 @@ func (p *Provisioner) Start(ctx context.Context, req *outrunner.RunnerRequest) e
 	if err != nil {
 		p.destroyDomain(req.Name)
 		_ = os.Remove(overlayPath)
+		_ = os.Remove(nvramPath(overlayPath))
 		return fmt.Errorf("guest-exec: %w", err)
 	}
 
@@ -154,9 +156,15 @@ func (p *Provisioner) Stop(ctx context.Context, name string) error {
 
 	if ok {
 		_ = os.Remove(overlayPath)
+		_ = os.Remove(nvramPath(overlayPath))
 	}
 
 	return nil
+}
+
+// nvramPath keeps a VM's firmware variables beside its overlay so both are removed together.
+func nvramPath(overlayPath string) string {
+	return strings.TrimSuffix(overlayPath, ".qcow2") + ".fd"
 }
 
 func (p *Provisioner) Close() error {
@@ -186,6 +194,7 @@ func (p *Provisioner) Cleanup(prefix string) {
 
 		overlayPath := filepath.Join(p.overlayDir, name+".qcow2")
 		_ = os.Remove(overlayPath)
+		_ = os.Remove(nvramPath(overlayPath))
 	}
 }
 
@@ -269,13 +278,16 @@ func (p *Provisioner) guestExec(ctx context.Context, dom golibvirt.Domain, path 
 
 // domainXMLParams are the template parameters for domain XML generation.
 type domainXMLParams struct {
-	Name        string
-	OverlayPath string
-	CPUs        int
-	MemoryMB    int
-	Network     string
-	MountSource string // empty = no virtiofs mount
-	MountTag    string // virtiofs tag (basename of source)
+	Name             string
+	OverlayPath      string
+	CPUs             int
+	MemoryMB         int
+	Network          string
+	MountSource      string // empty = no virtiofs mount
+	MountTag         string // virtiofs tag (basename of source)
+	FirmwarePath     string // empty = libvirt firmware autoselection
+	FirmwareVarsPath string
+	NVRAMPath        string
 }
 
 var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
@@ -286,8 +298,10 @@ var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
     <source type='memfd'/>
     <access mode='shared'/>
   </memoryBacking>{{end}}
-  <os firmware='efi'>
-    <type arch='x86_64' machine='q35'>hvm</type>
+  <os{{if not .FirmwarePath}} firmware='efi'{{end}}>
+    <type arch='x86_64' machine='q35'>hvm</type>{{if .FirmwarePath}}
+    <loader readonly='yes' type='pflash'>{{.FirmwarePath}}</loader>
+    <nvram template='{{.FirmwareVarsPath}}'>{{.NVRAMPath}}</nvram>{{end}}
     <boot dev='hd'/>
   </os>
   <features>
@@ -330,6 +344,11 @@ func renderDomainXML(name, overlayPath string, img *outrunner.LibvirtImage, netw
 	if img.Mount != nil {
 		params.MountSource = img.Mount.Source
 		params.MountTag = filepath.Base(img.Mount.Source)
+	}
+	if img.Firmware != nil {
+		params.FirmwarePath = img.Firmware.Path
+		params.FirmwareVarsPath = img.Firmware.VarsPath
+		params.NVRAMPath = nvramPath(overlayPath)
 	}
 
 	var buf strings.Builder
