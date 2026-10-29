@@ -40,6 +40,9 @@ func TestRenderDomainXML(t *testing.T) {
 				if !strings.Contains(xmlStr, "<source network='default'/>") {
 					t.Error("missing network")
 				}
+				if strings.Contains(xmlStr, "<tpm") {
+					t.Error("unexpected TPM")
+				}
 			},
 		},
 		{
@@ -72,6 +75,18 @@ func TestRenderDomainXML(t *testing.T) {
 				}
 				if !strings.Contains(xmlStr, "<memory unit='MiB'>512</memory>") {
 					t.Error("expected 512 MiB memory")
+				}
+			},
+		},
+		{
+			name:    "tpm",
+			vmName:  "with-tpm",
+			overlay: "/tmp/with-tpm.qcow2",
+			img:     &outrunner.LibvirtImage{CPUs: 4, MemoryMB: 8192, TPM: true},
+			network: "default",
+			check: func(t *testing.T, xmlStr string) {
+				if !strings.Contains(xmlStr, "<backend type='emulator' version='2.0'/>") {
+					t.Error("missing TPM emulator")
 				}
 			},
 		},

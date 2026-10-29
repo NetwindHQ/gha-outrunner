@@ -276,6 +276,7 @@ type domainXMLParams struct {
 	Network     string
 	MountSource string // empty = no virtiofs mount
 	MountTag    string // virtiofs tag (basename of source)
+	TPM         bool
 }
 
 var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
@@ -313,7 +314,10 @@ var domainTmpl = template.Must(template.New("domain").Parse(`<domain type='kvm'>
       <driver type='virtiofs'/>
       <source dir='{{.MountSource}}'/>
       <target dir='{{.MountTag}}'/>
-    </filesystem>{{end}}
+    </filesystem>{{end}}{{if .TPM}}
+    <tpm model='tpm-crb'>
+      <backend type='emulator' version='2.0'/>
+    </tpm>{{end}}
     <serial type='pty'/>
     <console type='pty'/>
   </devices>
@@ -326,6 +330,7 @@ func renderDomainXML(name, overlayPath string, img *outrunner.LibvirtImage, netw
 		CPUs:        img.CPUs,
 		MemoryMB:    img.MemoryMB,
 		Network:     network,
+		TPM:         img.TPM,
 	}
 	if img.Mount != nil {
 		params.MountSource = img.Mount.Source

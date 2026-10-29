@@ -69,6 +69,7 @@ type LibvirtImage struct {
 	CPUs      int           `yaml:"cpus"`
 	MemoryMB  int           `yaml:"memory"`
 	Mount     *LibvirtMount `yaml:"mount"`
+	TPM       bool          `yaml:"tpm"`
 }
 
 // TartImage configures a Tart-based runner (macOS/Linux on Apple Silicon).
